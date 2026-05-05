@@ -3,10 +3,13 @@ from typing import Any
 
 from .models import (
     AdvisoryByID,
+    EnisaProductInfo,
+    EnisaVendorInfo,
     ENISAVulnerabilityByID,
     ExploitedVulnerability,
     KevEntry,
     VulnerabilityBase,
+    VulnerabilityQueryResponse,
 )
 
 SARIF_VERSION = "2.1.0"
@@ -38,7 +41,7 @@ def _build_fingerprints(uuid: str | None) -> dict[str, str]:
 
 
 def _build_products(
-    products: list[Any] | None,
+    products: list[EnisaProductInfo] | None,
 ) -> list[dict[str, Any]] | None:
     if not products:
         return None
@@ -48,7 +51,9 @@ def _build_products(
     ]
 
 
-def _build_vendors(vendors: list[Any] | None) -> list[dict[str, Any]] | None:
+def _build_vendors(
+    vendors: list[EnisaVendorInfo] | None,
+) -> list[dict[str, Any]] | None:
     if not vendors:
         return None
     return [{"id": v.id, "name": v.vendor.name} for v in vendors]
@@ -72,16 +77,19 @@ def _build_common_properties(
         properties["dateUpdated"] = vuln.dateUpdated
     if vuln.epss is not None:
         properties["epss"] = vuln.epss
-    products = _build_products(getattr(vuln, "enisaIdProduct", None))
+    products = _build_products(vuln.enisaIdProduct)
     if products:
         properties["products"] = products
-    vendors = _build_vendors(getattr(vuln, "enisaIdVendor", None))
+    vendors = _build_vendors(vuln.enisaIdVendor)
     if vendors:
         properties["vendors"] = vendors
     return properties
 
 
-def vulnerability_to_result(vuln: VulnerabilityBase) -> dict[str, Any]:
+def _build_vulnerability_result(
+    vuln: VulnerabilityBase | ENISAVulnerabilityByID,
+    extra_properties: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ruleId": vuln.id,
         "level": _score_to_level(vuln.baseScore),
@@ -91,15 +99,11 @@ def vulnerability_to_result(vuln: VulnerabilityBase) -> dict[str, Any]:
 
     fingerprints = _build_fingerprints(vuln.enisaUuid)
     properties = _build_common_properties(vuln)
+    if extra_properties:
+        properties.update(extra_properties)
 
-    if vuln.baseScoreVector:
-        properties["baseScoreVector"] = vuln.baseScoreVector
-    if vuln.baseScoreVersion:
-        properties["baseScoreVersion"] = vuln.baseScoreVersion
     if vuln.epss is not None:
         result["rank"] = vuln.epss * 100
-    if isinstance(vuln, ExploitedVulnerability) and vuln.exploitedSince:
-        properties["exploitedSince"] = vuln.exploitedSince
 
     if fingerprints:
         result["fingerprints"] = fingerprints
@@ -107,28 +111,21 @@ def vulnerability_to_result(vuln: VulnerabilityBase) -> dict[str, Any]:
         result["properties"] = properties
 
     return result
+
+
+def vulnerability_to_result(vuln: VulnerabilityBase) -> dict[str, Any]:
+    extra: dict[str, Any] = {}
+    if vuln.baseScoreVector:
+        extra["baseScoreVector"] = vuln.baseScoreVector
+    if vuln.baseScoreVersion:
+        extra["baseScoreVersion"] = vuln.baseScoreVersion
+    if isinstance(vuln, ExploitedVulnerability) and vuln.exploitedSince:
+        extra["exploitedSince"] = vuln.exploitedSince
+    return _build_vulnerability_result(vuln, extra_properties=extra or None)
 
 
 def enisa_vulnerability_to_result(vuln: ENISAVulnerabilityByID) -> dict[str, Any]:
-    result: dict[str, Any] = {
-        "ruleId": vuln.id,
-        "level": _score_to_level(vuln.baseScore),
-        "kind": "fail",
-        "message": {"text": vuln.description or vuln.id},
-    }
-
-    fingerprints = _build_fingerprints(vuln.enisaUuid)
-    properties = _build_common_properties(vuln)
-
-    if vuln.epss is not None:
-        result["rank"] = vuln.epss * 100
-
-    if fingerprints:
-        result["fingerprints"] = fingerprints
-    if properties:
-        result["properties"] = properties
-
-    return result
+    return _build_vulnerability_result(vuln)
 
 
 def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
@@ -225,8 +222,6 @@ def to_sarif_json(data: Any) -> str:
     if isinstance(data, AdvisoryByID):
         results = [advisory_to_result(data)]
         return json.dumps(build_sarif_log(results), indent=2)
-
-    from .models import VulnerabilityQueryResponse
 
     if isinstance(data, VulnerabilityQueryResponse):
         results = [vulnerability_to_result(v) for v in data.items]

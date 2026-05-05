@@ -1,3 +1,4 @@
+import functools
 import json
 import logging
 import sys
@@ -6,6 +7,8 @@ from datetime import datetime
 from typing import Any
 
 import click
+import requests.exceptions
+from pydantic import ValidationError
 from rich.console import Console
 from rich.json import JSON
 from rich.table import Table
@@ -49,8 +52,8 @@ def pretty_print_json(data: Any):
     console.print(json_obj)
 
 
-def output_data(data: Any, fmt: str):
-    if fmt == "sarif":
+def output_data(data: Any, output_format: str):
+    if output_format == "sarif":
         click.echo(to_sarif_json(data))
     else:
         pretty_print_json(data)
@@ -74,21 +77,27 @@ def _fetch_and_output(label: str, fetch_func):
 
 
 def handle_api_error(func):
-    import functools
-
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except Exception as e:
+        except requests.RequestException as e:
+            console.print(f"[red]HTTP error: {e}[/red]")
+            logger.error(f"HTTP error: {e}")
+            return None
+        except ValidationError as e:
+            console.print(f"[red]Data validation error: {e}[/red]")
+            logger.error(f"Data validation error: {e}")
+            return None
+        except ValueError as e:
             console.print(f"[red]Error: {e}[/red]")
-            logger.error(f"API error: {e}")
+            logger.error(f"Error: {e}")
             return None
 
     return wrapper
 
 
-@click.group()
+@click.group(help="EUVD CLI tool for vulnerability lookup.")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option(
     "--format",
@@ -99,64 +108,58 @@ def handle_api_error(func):
 )
 @click.help_option("-h", "--help")
 def cli(verbose: bool, output_format: str):
-    """EUVD CLI tool for vulnerability lookup."""
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
 
-@cli.command()
+@cli.command(help="Show latest vulnerabilities.")
 @handle_api_error
 def latest():
-    """Show latest vulnerabilities."""
     _fetch_and_output(
         "Fetching latest vulnerabilities...",
         lambda c: c.get_latest_vulnerabilities(),
     )
 
 
-@cli.command()
+@cli.command(help="Show critical vulnerabilities.")
 @handle_api_error
 def critical():
-    """Show critical vulnerabilities."""
     _fetch_and_output(
         "Fetching critical vulnerabilities...",
         lambda c: c.get_critical_vulnerabilities(),
     )
 
 
-@cli.command()
+@cli.command(help="Show exploited vulnerabilities.")
 @handle_api_error
 def exploited():
-    """Show exploited vulnerabilities."""
     _fetch_and_output(
         "Fetching exploited vulnerabilities...",
         lambda c: c.get_exploited_vulnerabilities(),
     )
 
 
-@cli.command()
+@cli.command(help="Search vulnerability by ENISA ID.")
 @click.argument("enisa_id")
 @handle_api_error
 def search_enisa(enisa_id: str):
-    """Search vulnerability by ENISA ID."""
     _fetch_and_output(
         f"Searching for ENISA ID: {enisa_id}...",
         lambda c: c.get_vulnerability_by_enisa_id(enisa_id),
     )
 
 
-@cli.command()
+@cli.command(help="Search vulnerability by Advisory ID.")
 @click.argument("advisory_id")
 @handle_api_error
 def search_advisory(advisory_id: str):
-    """Search vulnerability by Advisory ID."""
     _fetch_and_output(
         f"Searching for Advisory ID: {advisory_id}...",
         lambda c: c.get_advisory_by_id(advisory_id),
     )
 
 
-@cli.command()
+@cli.command(help="Advanced search with flexible filters.")
 @click.option("--text", help="Text search keywords")
 @click.option("--vendor", help="Vendor name")
 @click.option("--product", help="Product name")
@@ -188,7 +191,6 @@ def search(
     size: int,
     page: int,
 ):
-    """Advanced search with flexible filters."""
     sarif = _is_sarif()
     if not sarif:
         print_banner()
@@ -229,10 +231,9 @@ def search(
         output_data(data, "sarif" if sarif else "json")
 
 
-@cli.command()
+@cli.command(help="Show vulnerability statistics.")
 @handle_api_error
 def stats():
-    """Show vulnerability statistics."""
     sarif = _is_sarif()
     if not sarif:
         print_banner()
@@ -262,12 +263,11 @@ def stats():
         console.print(table)
 
 
-@cli.command()
+@cli.command(help="Download KEV dump.")
 @click.option("--output", "-o", help="Save to file path")
 @click.option("--save", is_flag=True, help="Save as kev_dump_YYYYMMDD_HHMMSS.json")
 @handle_api_error
 def kev_dump(output: str | None, save: bool):
-    """Download KEV dump."""
     sarif = _is_sarif()
     if not sarif:
         print_banner()
@@ -278,20 +278,13 @@ def kev_dump(output: str | None, save: bool):
         if not sarif:
             console.print(f"[green]{len(data)} KEV entries[/green]")
 
-        fmt = "sarif" if sarif else "json"
-        if output:
-            content = (
-                to_sarif_json(data)
-                if sarif
-                else json.dumps([item.model_dump() for item in data], indent=2)
-            )
-            with open(output, "w") as f:
-                f.write(content)
-            if not sarif:
-                console.print(f"[green]Saved to {output}[/green]")
-        elif save:
-            ext = ".sarif.json" if sarif else ".json"
-            filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
+        output_format = "sarif" if sarif else "json"
+        if output or save:
+            if output:
+                filename = output
+            else:
+                ext = ".sarif.json" if sarif else ".json"
+                filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
             content = (
                 to_sarif_json(data)
                 if sarif
@@ -302,12 +295,11 @@ def kev_dump(output: str | None, save: bool):
             if not sarif:
                 console.print(f"[green]Saved to {filename}[/green]")
         else:
-            output_data(data, fmt)
+            output_data(data, output_format)
 
 
-@cli.command()
+@cli.command(help="Run the self-test suite.")
 def selftest():
-    """Run the self-test suite."""
     print_banner()
     if not run_self_test():
         sys.exit(1)

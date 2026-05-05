@@ -3,7 +3,7 @@ import logging
 import requests
 from typing import TypeVar, Type
 from urllib.parse import quote
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from .models import (
     LatestVulnerability,
@@ -14,14 +14,17 @@ from .models import (
     VulnerabilityQueryResponse,
     KevEntry,
 )
+from . import __version__
 
 T = TypeVar("T", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
+RATE_LIMIT_INTERVAL = 6.0
+
 
 class RateLimiter:
-    def __init__(self, interval: float = 6.0):
+    def __init__(self, interval: float = RATE_LIMIT_INTERVAL):
         self.interval = interval
         self.last_request = 0.0
 
@@ -45,7 +48,7 @@ class EUVDAPIClient:
         self.session = requests.Session()
         self.session.timeout = self.TIMEOUT
         self.rate_limiter = RateLimiter()
-        self.session.headers.update({"User-Agent": "EUVD-Python-CLI/1.0.0"})
+        self.session.headers.update({"User-Agent": f"EUVD-Python-CLI/{__version__}"})
 
     def _fetch(self, endpoint: str) -> dict | list:
         self.rate_limiter.wait_if_needed()
@@ -56,30 +59,14 @@ class EUVDAPIClient:
         return response.json()
 
     def _request(self, endpoint: str, model_class: Type[T]) -> T:
-        try:
-            data = self._fetch(endpoint)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"HTTP error: {e}")
-            raise
-        try:
-            return model_class.model_validate(data)
-        except ValidationError as e:
-            logger.error(f"Data validation error: {e}")
-            raise
+        data = self._fetch(endpoint)
+        return model_class.model_validate(data)
 
     def _request_list(self, endpoint: str, model_class: Type[T]) -> list[T]:
-        try:
-            data = self._fetch(endpoint)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"HTTP error: {e}")
-            raise
+        data = self._fetch(endpoint)
         if not isinstance(data, list):
             raise ValueError(f"Expected list response, got {type(data)}")
-        try:
-            return [model_class.model_validate(item) for item in data]
-        except ValidationError as e:
-            logger.error(f"Data validation error: {e}")
-            raise
+        return [model_class.model_validate(item) for item in data]
 
     def get_latest_vulnerabilities(self) -> list[LatestVulnerability]:
         return self._request_list("/lastvulnerabilities", LatestVulnerability)
