@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+from . import __version__ as _pkg_version
 from .models import (
     AdvisoryByID,
     EnisaProductInfo,
@@ -18,7 +19,7 @@ SARIF_SCHEMA = (
     "/sarif-schema-2.1.0.json"
 )
 TOOL_NAME = "EUVD CLI"
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = _pkg_version
 TOOL_URI = "https://euvd.enisa.europa.eu"
 
 

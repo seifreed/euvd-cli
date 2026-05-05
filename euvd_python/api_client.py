@@ -2,7 +2,6 @@ import time
 import logging
 import requests
 from typing import TypeVar, Type
-from urllib.parse import quote
 from pydantic import BaseModel
 
 from .models import (
@@ -50,16 +49,19 @@ class EUVDAPIClient:
         self.rate_limiter = RateLimiter()
         self.session.headers.update({"User-Agent": f"EUVD-Python-CLI/{__version__}"})
 
-    def _fetch(self, endpoint: str) -> dict | list:
+    def _fetch(
+        self, endpoint: str, params: dict[str, str] | None = None
+    ) -> dict | list:
         self.rate_limiter.wait_if_needed()
         url = f"{self.BASE_URL}{endpoint}"
-        logger.debug(f"Making request to: {url}")
-        response = self.session.get(url)
+        response = self.session.get(url, params=params)
         response.raise_for_status()
         return response.json()
 
-    def _request(self, endpoint: str, model_class: Type[T]) -> T:
-        data = self._fetch(endpoint)
+    def _request(
+        self, endpoint: str, model_class: Type[T], params: dict[str, str] | None = None
+    ) -> T:
+        data = self._fetch(endpoint, params=params)
         return model_class.model_validate(data)
 
     def _request_list(self, endpoint: str, model_class: Type[T]) -> list[T]:
@@ -78,12 +80,12 @@ class EUVDAPIClient:
         return self._request_list("/criticalvulnerabilities", CriticalVulnerability)
 
     def get_vulnerability_by_enisa_id(self, enisa_id: str) -> ENISAVulnerabilityByID:
-        endpoint = f"/enisaid?id={quote(enisa_id)}"
-        return self._request(endpoint, ENISAVulnerabilityByID)
+        return self._request(
+            "/enisaid", ENISAVulnerabilityByID, params={"id": enisa_id}
+        )
 
     def get_advisory_by_id(self, advisory_id: str) -> AdvisoryByID:
-        endpoint = f"/advisory?id={quote(advisory_id)}"
-        return self._request(endpoint, AdvisoryByID)
+        return self._request("/advisory", AdvisoryByID, params={"id": advisory_id})
 
     def search_vulnerabilities(
         self,
@@ -101,36 +103,35 @@ class EUVDAPIClient:
         page: int = 0,
         size: int = 10,
     ) -> VulnerabilityQueryResponse:
-        params: list[str] = []
+        params: dict[str, str] = {}
 
         if from_score is not None:
-            params.append(f"fromScore={from_score}")
+            params["fromScore"] = str(from_score)
         if to_score is not None:
-            params.append(f"toScore={to_score}")
+            params["toScore"] = str(to_score)
         if from_epss is not None:
-            params.append(f"fromEpss={from_epss}")
+            params["fromEpss"] = str(from_epss)
         if to_epss is not None:
-            params.append(f"toEpss={to_epss}")
+            params["toEpss"] = str(to_epss)
         if from_date:
-            params.append(f"fromDate={from_date}")
+            params["fromDate"] = from_date
         if to_date:
-            params.append(f"toDate={to_date}")
+            params["toDate"] = to_date
         if product:
-            params.append(f"product={quote(product)}")
+            params["product"] = product
         if vendor:
-            params.append(f"vendor={quote(vendor)}")
+            params["vendor"] = vendor
         if assigner:
-            params.append(f"assigner={quote(assigner)}")
+            params["assigner"] = assigner
         if exploited is not None:
-            params.append(f"exploited={str(exploited).lower()}")
+            params["exploited"] = str(exploited).lower()
         if text:
-            params.append(f"text={quote(text)}")
+            params["text"] = text
 
-        params.append(f"page={page}")
-        params.append(f"size={min(size, 100)}")
+        params["page"] = str(page)
+        params["size"] = str(min(size, 100))
 
-        endpoint = f"/search?{'&'.join(params)}"
-        return self._request(endpoint, VulnerabilityQueryResponse)
+        return self._request("/search", VulnerabilityQueryResponse, params=params)
 
     def get_kev_dump(self) -> list[KevEntry]:
         return self._request_list("/kev/dump", KevEntry)

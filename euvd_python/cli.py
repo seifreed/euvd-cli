@@ -14,6 +14,7 @@ from rich.json import JSON
 from rich.table import Table
 
 from .api_client import EUVDAPIClient
+from . import __version__
 from .sarif import to_sarif_json
 from .self_test import run_self_test
 
@@ -32,7 +33,7 @@ def _api_client():
 
 def print_banner():
     console.print()
-    console.print("[bold cyan]EUVD Python CLI v1.0.0[/bold cyan]")
+    console.print(f"[bold cyan]EUVD Python CLI v{__version__}[/bold cyan]")
     console.print("[dim]ENISA EU Vulnerability Database Command Line Interface[/dim]")
     console.print(
         "[dim]Marc Rivero Lopez | API: https://euvd.enisa.europa.eu/apidoc[/dim]"
@@ -84,15 +85,15 @@ def handle_api_error(func):
         except requests.RequestException as e:
             console.print(f"[red]HTTP error: {e}[/red]")
             logger.error(f"HTTP error: {e}")
-            return None
+            sys.exit(1)
         except ValidationError as e:
             console.print(f"[red]Data validation error: {e}[/red]")
             logger.error(f"Data validation error: {e}")
-            return None
+            sys.exit(1)
         except ValueError as e:
             console.print(f"[red]Error: {e}[/red]")
             logger.error(f"Error: {e}")
-            return None
+            sys.exit(1)
 
     return wrapper
 
@@ -112,7 +113,7 @@ def cli(verbose: bool, output_format: str):
         logging.getLogger().setLevel(logging.DEBUG)
 
 
-@cli.command(help="Show latest vulnerabilities.")
+@cli.command()
 @handle_api_error
 def latest():
     _fetch_and_output(
@@ -121,7 +122,7 @@ def latest():
     )
 
 
-@cli.command(help="Show critical vulnerabilities.")
+@cli.command()
 @handle_api_error
 def critical():
     _fetch_and_output(
@@ -130,7 +131,7 @@ def critical():
     )
 
 
-@cli.command(help="Show exploited vulnerabilities.")
+@cli.command()
 @handle_api_error
 def exploited():
     _fetch_and_output(

@@ -1,110 +1,89 @@
+from collections.abc import Callable
+
+from rich.console import Console
+
 from .api_client import EUVDAPIClient
 
+console = Console()
 
-def _test_endpoint(label: str, func, *args, **kwargs) -> bool:
+
+def _test_endpoint(label: str, func: Callable[..., object], *args, **kwargs) -> bool:
     try:
         result = func(*args, **kwargs)
         if isinstance(result, list):
-            print(f"PASS {label} ({len(result)} items)")
+            console.print(f"[green]PASS[/green] {label} ({len(result)} items)")
         elif isinstance(result, dict):
-            print(f"PASS {label} ({result})")
+            console.print(f"[green]PASS[/green] {label} ({result})")
         else:
-            print(f"PASS {label}")
+            console.print(f"[green]PASS[/green] {label}")
         return True
     except Exception as e:
-        print(f"FAIL {label}: {e}")
+        console.print(f"[red]FAIL[/red] {label}: {e}")
         return False
 
 
 def run_self_test() -> bool:
     client = EUVDAPIClient()
-    results: list[bool] = []
+    results: list[tuple[str, bool]] = []
 
     try:
-        print("Running self-test against official EUVD API endpoints...")
+        console.print("Running self-test against official EUVD API endpoints...")
 
-        results.append(
-            _test_endpoint("Latest vulnerabilities", client.get_latest_vulnerabilities)
-        )
-        results.append(
-            _test_endpoint(
-                "Critical vulnerabilities", client.get_critical_vulnerabilities
-            )
-        )
-        results.append(
-            _test_endpoint(
-                "Exploited vulnerabilities", client.get_exploited_vulnerabilities
-            )
-        )
-        results.append(
-            _test_endpoint(
+        tests: list[tuple[str, Callable[..., object], tuple, dict]] = [
+            ("Latest vulnerabilities", client.get_latest_vulnerabilities, (), {}),
+            ("Critical vulnerabilities", client.get_critical_vulnerabilities, (), {}),
+            ("Exploited vulnerabilities", client.get_exploited_vulnerabilities, (), {}),
+            (
                 "ENISA ID search",
                 client.get_vulnerability_by_enisa_id,
-                "EUVD-2025-4893",
-            )
-        )
-        results.append(
-            _test_endpoint(
+                ("EUVD-2025-4893",),
+                {},
+            ),
+            (
                 "Advisory ID search",
                 client.get_advisory_by_id,
-                "oxas-adv-2024-0002",
-            )
-        )
-        results.append(
-            _test_endpoint(
+                ("oxas-adv-2024-0002",),
+                {},
+            ),
+            (
                 "Advanced search (text)",
                 client.search_vulnerabilities,
-                text="vulnerability",
-                size=2,
-            )
-        )
-        results.append(
-            _test_endpoint(
+                (),
+                {"text": "vulnerability", "size": 2},
+            ),
+            (
                 "Advanced search (exploited)",
                 client.search_vulnerabilities,
-                exploited=True,
-                size=2,
-            )
-        )
-        results.append(
-            _test_endpoint(
+                (),
+                {"exploited": True, "size": 2},
+            ),
+            (
                 "Advanced search (score filter)",
                 client.search_vulnerabilities,
-                from_score=9.0,
-                size=2,
-            )
-        )
-        results.append(
-            _test_endpoint(
+                (),
+                {"from_score": 9.0, "size": 2},
+            ),
+            (
                 "Advanced search (date filter)",
                 client.search_vulnerabilities,
-                from_date="2024-01-01",
-                size=2,
-            )
-        )
-        results.append(_test_endpoint("KEV dump", client.get_kev_dump))
+                (),
+                {"from_date": "2024-01-01", "size": 2},
+            ),
+            ("KEV dump", client.get_kev_dump, (), {}),
+        ]
 
-        passed = sum(results)
+        for label, func, args, kwargs in tests:
+            results.append((label, _test_endpoint(label, func, *args, **kwargs)))
+
+        passed = sum(1 for _, ok in results if ok)
         total = len(results)
-        print(f"\n{passed}/{total} tests passed.")
+        console.print(f"\n{passed}/{total} tests passed.")
 
         if passed < total:
-            print("Failed tests:")
-            labels = [
-                "Latest vulnerabilities",
-                "Critical vulnerabilities",
-                "Exploited vulnerabilities",
-                "ENISA ID search",
-                "Advisory ID search",
-                "Advanced search (text)",
-                "Advanced search (exploited)",
-                "Advanced search (score filter)",
-                "Advanced search (date filter)",
-                "KEV dump",
-            ]
-            for label, result in zip(labels, results):
-                if not result:
-                    print(f"  - {label}")
+            console.print("[red]Failed tests:[/red]")
+            for label, ok in results:
+                if not ok:
+                    console.print(f"  - {label}")
 
         return passed == total
 

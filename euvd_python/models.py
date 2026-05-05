@@ -1,4 +1,3 @@
-from typing import Any
 from pydantic import BaseModel
 
 
@@ -59,6 +58,12 @@ class VulnerabilityQueryResponse(BaseModel):
     total: int
 
 
+class VulnerabilityAdvisory(BaseModel):
+    id: str | None = None
+    name: str | None = None
+    url: str | None = None
+
+
 class VulnerabilityByID(BaseModel):
     assigner: str | None = None
     baseScore: float | None = None
@@ -70,7 +75,7 @@ class VulnerabilityByID(BaseModel):
     id: str
     references: str | None = None
     status: str | None = None
-    vulnerabilityAdvisory: list[Any] | None = None
+    vulnerabilityAdvisory: list[VulnerabilityAdvisory] | None = None
     vulnerabilityProduct: list[EnisaProductInfo] | None = None
     vulnerabilityVendor: list[EnisaVendorInfo] | None = None
 
@@ -87,7 +92,7 @@ class ENISAVulnerabilityByID(BaseModel):
     datePublished: str | None = None
     dateUpdated: str | None = None
     description: str | None = None
-    enisaIdAdvisory: list[Any] | None = None
+    enisaIdAdvisory: list[VulnerabilityAdvisory] | None = None
     enisaIdProduct: list[EnisaProductInfo] | None = None
     enisaIdVendor: list[EnisaVendorInfo] | None = None
     enisaIdVulnerability: list[ENISAVulnWrapper] | None = None
@@ -97,21 +102,8 @@ class ENISAVulnerabilityByID(BaseModel):
     references: str | None = None
 
 
-class ENISAVulnerability(BaseModel):
-    aliases: str | None = None
-    assigner: str | None = None
-    baseScore: float | None = None
-    baseScoreVector: str | None = None
-    baseScoreVersion: str | None = None
-    datePublished: str | None = None
-    dateUpdated: str | None = None
-    description: str | None = None
-    enisaIdProduct: list[EnisaProductInfo] | None = None
-    enisaIdVendor: list[EnisaVendorInfo] | None = None
-    enisaUuid: str | None = None
-    epss: float | None = None
-    id: str
-    references: str | None = None
+class ENISAVulnerability(VulnerabilityBase):
+    pass
 
 
 class ENISAAdvisoryWrapper(BaseModel):
