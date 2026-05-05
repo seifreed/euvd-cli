@@ -25,6 +25,9 @@ python euvd-cli.py search-advisory oxas-adv-2024-0002
 python euvd-cli.py search --text "Windows" --size 10
 python euvd-cli.py search --exploited true --size 5
 python euvd-cli.py stats
+python euvd-cli.py kev-dump
+python euvd-cli.py kev-dump --save
+python euvd-cli.py kev-dump -o kev.json
 python euvd-cli.py selftest
 ```
 
@@ -44,6 +47,7 @@ Base URL: `https://euvdservices.enisa.europa.eu/api`
 | `/enisaid?id=` | Search by ENISA ID |
 | `/advisory?id=` | Search by Advisory ID |
 | `/search` | Search with filters |
+| `/kev/dump` | KEV catalog dump |
 
 ## License
 

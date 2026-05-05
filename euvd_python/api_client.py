@@ -12,6 +12,7 @@ from .models import (
     ENISAVulnerabilityByID,
     AdvisoryByID,
     VulnerabilityQueryResponse,
+    KevEntry,
 )
 
 T = TypeVar("T", bound=BaseModel)
@@ -146,6 +147,9 @@ class EUVDAPIClient:
 
         endpoint = f"/search?{'&'.join(params)}"
         return self._request(endpoint, VulnerabilityQueryResponse)
+
+    def get_kev_dump(self) -> list[KevEntry]:
+        return self._request_list("/kev/dump", KevEntry)
 
     def get_vulnerability_stats(self) -> dict[str, int]:
         return {

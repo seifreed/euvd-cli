@@ -41,6 +41,7 @@ def run_self_test() -> bool:
             size=2,
         )
         _test_endpoint("Vulnerability statistics", client.get_vulnerability_stats)
+        _test_endpoint("KEV dump", client.get_kev_dump)
 
         print("\nSelf-test completed.")
         return True

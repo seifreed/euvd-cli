@@ -1,5 +1,7 @@
 import functools
+import json
 import logging
+from datetime import datetime
 from typing import Any
 
 import click
@@ -167,6 +169,28 @@ class EUVDCLIApp:
         pretty_print_json(data)
         return data
 
+    @handle_api_error
+    def fetch_kev_dump(self, output: str | None = None, save: bool = False):
+        console.print("[yellow]Fetching KEV dump...[/yellow]")
+        data = self.client.get_kev_dump()
+        console.print(f"[green]{len(data)} KEV entries[/green]")
+
+        if output:
+            json_data = [item.model_dump() for item in data]
+            with open(output, "w") as f:
+                json.dump(json_data, f, indent=2)
+            console.print(f"[green]Saved to {output}[/green]")
+        elif save:
+            filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            json_data = [item.model_dump() for item in data]
+            with open(filename, "w") as f:
+                json.dump(json_data, f, indent=2)
+            console.print(f"[green]Saved to {filename}[/green]")
+        else:
+            pretty_print_json(data)
+
+        return data
+
     def run_self_test_interactive(self):
         console.print("[yellow]Running self-test suite...[/yellow]")
         run_self_test()
@@ -190,8 +214,9 @@ class EUVDCLIApp:
                     ("5", "Search by Advisory ID"),
                     ("6", "Advanced Search with Filters"),
                     ("7", "Show Vulnerability Statistics"),
-                    ("8", "Run self-test"),
-                    ("9", "Exit"),
+                    ("8", "Download KEV Dump"),
+                    ("9", "Run self-test"),
+                    ("10", "Exit"),
                 ]
 
                 for option, description in menu_items:
@@ -201,7 +226,7 @@ class EUVDCLIApp:
 
                 choice = Prompt.ask(
                     "Select an option",
-                    choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                    choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
                 )
 
                 if choice == "1":
@@ -221,12 +246,14 @@ class EUVDCLIApp:
                 elif choice == "7":
                     self.show_vulnerability_stats()
                 elif choice == "8":
-                    self.run_self_test_interactive()
+                    self.fetch_kev_dump()
                 elif choice == "9":
+                    self.run_self_test_interactive()
+                elif choice == "10":
                     console.print("[yellow]Exiting...[/yellow]")
                     break
 
-                if choice != "9":
+                if choice != "10":
                     console.print()
                     if not Confirm.ask("Continue?", default=True):
                         console.print("[yellow]Exiting...[/yellow]")
@@ -379,6 +406,19 @@ def search(
             f"[green]Found {data.total} total vulnerabilities, showing {len(data.items)} results[/green]"
         )
         pretty_print_json(data)
+    finally:
+        app.close()
+
+
+@cli.command()
+@click.option("--output", "-o", help="Save to file path")
+@click.option("--save", is_flag=True, help="Save as kev_dump_YYYYMMDD_HHMMSS.json")
+def kev_dump(output, save):
+    """Download KEV dump."""
+    print_banner()
+    app = EUVDCLIApp()
+    try:
+        app.fetch_kev_dump(output=output, save=save)
     finally:
         app.close()
 

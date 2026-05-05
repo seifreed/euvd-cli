@@ -123,3 +123,12 @@ class AdvisoryByID(BaseModel):
     dateUpdated: str | None = None
     description: str | None = None
     enisaIdAdvisories: list[ENISAAdvisoryWrapper] | None = None
+
+
+class KevEntry(BaseModel):
+    cveId: str
+    euvdId: str
+    dateAdded: str
+    sources: list[str]
+    vendorProject: str | None = None
+    product: str | None = None
