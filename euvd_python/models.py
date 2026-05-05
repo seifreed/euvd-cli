@@ -2,8 +2,8 @@
 Data models for EUVD API responses using Pydantic.
 """
 
-from typing import List, Optional, Any
-from pydantic import BaseModel, Field
+from typing import Any
+from pydantic import BaseModel
 
 
 class ProductName(BaseModel):
@@ -13,7 +13,7 @@ class ProductName(BaseModel):
 class EnisaProductInfo(BaseModel):
     id: str
     product: ProductName
-    product_version: Optional[str] = None
+    product_version: str | None = None
 
 
 class VendorName(BaseModel):
@@ -25,7 +25,7 @@ class EnisaVendorInfo(BaseModel):
     vendor: VendorName
 
 
-class ExploitedVulnerability(BaseModel):
+class VulnerabilityBase(BaseModel):
     aliases: str
     assigner: str
     baseScore: float
@@ -34,81 +34,48 @@ class ExploitedVulnerability(BaseModel):
     datePublished: str
     dateUpdated: str
     description: str
-    enisaIdProduct: List[EnisaProductInfo]
-    enisaIdVendor: List[EnisaVendorInfo]
+    enisaIdProduct: list[EnisaProductInfo]
+    enisaIdVendor: list[EnisaVendorInfo]
     epss: float
+    id: str
+    references: str
+
+
+class LatestVulnerability(VulnerabilityBase):
+    pass
+
+
+class CriticalVulnerability(VulnerabilityBase):
+    pass
+
+
+class ExploitedVulnerability(VulnerabilityBase):
     exploitedSince: str
-    id: str
-    references: str
 
 
-class CriticalVulnerability(BaseModel):
-    aliases: str
-    assigner: str
-    baseScore: float
-    baseScoreVector: str
-    baseScoreVersion: str
-    datePublished: str
-    dateUpdated: str
-    description: str
-    enisaIdProduct: List[EnisaProductInfo]
-    enisaIdVendor: List[EnisaVendorInfo]
-    epss: float
-    id: str
-    references: str
-
-
-class LatestVulnerability(BaseModel):
-    aliases: str
-    assigner: str
-    baseScore: float
-    baseScoreVector: str
-    baseScoreVersion: str
-    datePublished: str
-    dateUpdated: str
-    description: str
-    enisaIdProduct: List[EnisaProductInfo]
-    enisaIdVendor: List[EnisaVendorInfo]
-    epss: float
-    id: str
-    references: str
-
-
-class VulnerabilityItem(BaseModel):
-    aliases: str
-    assigner: str
-    baseScore: float
-    baseScoreVector: str
-    baseScoreVersion: str
-    datePublished: str
-    dateUpdated: str
-    description: str
-    enisaIdProduct: List[EnisaProductInfo]
-    enisaIdVendor: List[EnisaVendorInfo]
-    epss: float
-    id: str
-    references: str
+class VulnerabilityItem(VulnerabilityBase):
+    pass
 
 
 class VulnerabilityQueryResponse(BaseModel):
-    items: List[VulnerabilityItem]
+    items: list[VulnerabilityItem]
     total: int
 
 
 class VulnerabilityByID(BaseModel):
-    assigner: Optional[str] = None
-    baseScore: Optional[float] = None
-    datePublished: Optional[str] = None
-    dateUpdated: Optional[str] = None
-    description: Optional[str] = None
-    enisa_id: Optional[str] = None
-    epss: Optional[float] = None
+    assigner: str | None = None
+    baseScore: float | None = None
+    datePublished: str | None = None
+    dateUpdated: str | None = None
+    description: str | None = None
+    enisa_id: str | None = None
+    epss: float | None = None
     id: str
-    references: Optional[str] = None
-    status: Optional[str] = None
-    vulnerabilityAdvisory: Optional[List[Any]] = None  # Empty array in sample
-    vulnerabilityProduct: Optional[List[EnisaProductInfo]] = None
-    vulnerabilityVendor: Optional[List[EnisaVendorInfo]] = None
+    references: str | None = None
+    status: str | None = None
+    vulnerabilityAdvisory: list[Any] | None = None
+    vulnerabilityProduct: list[EnisaProductInfo] | None = None
+    vulnerabilityVendor: list[EnisaVendorInfo] | None = None
 
 
 class ENISAVulnWrapper(BaseModel):
@@ -117,19 +84,19 @@ class ENISAVulnWrapper(BaseModel):
 
 
 class ENISAVulnerabilityByID(BaseModel):
-    aliases: Optional[str] = None
-    assigner: Optional[str] = None
-    baseScore: Optional[float] = None
-    datePublished: Optional[str] = None
-    dateUpdated: Optional[str] = None
-    description: Optional[str] = None
-    enisaIdAdvisory: Optional[List[Any]] = None
-    enisaIdProduct: Optional[List[EnisaProductInfo]] = None
-    enisaIdVendor: Optional[List[EnisaVendorInfo]] = None
-    enisaIdVulnerability: Optional[List[ENISAVulnWrapper]] = None
-    epss: Optional[float] = None
+    aliases: str | None = None
+    assigner: str | None = None
+    baseScore: float | None = None
+    datePublished: str | None = None
+    dateUpdated: str | None = None
+    description: str | None = None
+    enisaIdAdvisory: list[Any] | None = None
+    enisaIdProduct: list[EnisaProductInfo] | None = None
+    enisaIdVendor: list[EnisaVendorInfo] | None = None
+    enisaIdVulnerability: list[ENISAVulnWrapper] | None = None
+    epss: float | None = None
     id: str
-    references: Optional[str] = None
+    references: str | None = None
 
 
 class ENISAVulnerability(BaseModel):
@@ -141,7 +108,7 @@ class ENISAVulnerability(BaseModel):
     datePublished: str
     dateUpdated: str
     description: str
-    enisaIdVendor: List[EnisaVendorInfo]
+    enisaIdVendor: list[EnisaVendorInfo]
     epss: float
     id: str
     references: str
@@ -153,10 +120,10 @@ class ENISAAdvisoryWrapper(BaseModel):
 
 
 class AdvisoryByID(BaseModel):
-    advisoryProduct: Optional[List[EnisaProductInfo]] = None
-    aliases: Optional[str] = None
-    baseScore: Optional[float] = None
-    datePublished: Optional[str] = None
-    dateUpdated: Optional[str] = None
-    description: Optional[str] = None
-    enisaIdAdvisories: Optional[List[ENISAAdvisoryWrapper]] = None 
+    advisoryProduct: list[EnisaProductInfo] | None = None
+    aliases: str | None = None
+    baseScore: float | None = None
+    datePublished: str | None = None
+    dateUpdated: str | None = None
+    description: str | None = None
+    enisaIdAdvisories: list[ENISAAdvisoryWrapper] | None = None

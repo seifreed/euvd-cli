@@ -19,9 +19,9 @@ def main():
     # Set up basic logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    
+
     # If no arguments provided, run interactive mode
     if len(sys.argv) == 1:
         app = EUVDCLIApp()
@@ -32,4 +32,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

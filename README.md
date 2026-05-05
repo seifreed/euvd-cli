@@ -17,7 +17,7 @@ A Python command-line interface for querying the ENISA EU Vulnerability Database
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.13 or higher
 - pip package manager
 
 ### Setup

@@ -1,0 +1,9 @@
+CLAUDE.md
+.claude/
+AGENTS.md
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.DS_Store
+*.egg-info/
