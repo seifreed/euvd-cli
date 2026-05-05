@@ -22,19 +22,20 @@ class EnisaVendorInfo(BaseModel):
 
 
 class VulnerabilityBase(BaseModel):
-    aliases: str
-    assigner: str
-    baseScore: float
-    baseScoreVector: str
-    baseScoreVersion: str
-    datePublished: str
-    dateUpdated: str
-    description: str
-    enisaIdProduct: list[EnisaProductInfo]
-    enisaIdVendor: list[EnisaVendorInfo]
-    epss: float
+    aliases: str | None = None
+    assigner: str | None = None
+    baseScore: float | None = None
+    baseScoreVector: str | None = None
+    baseScoreVersion: str | None = None
+    datePublished: str | None = None
+    dateUpdated: str | None = None
+    description: str | None = None
+    enisaIdProduct: list[EnisaProductInfo] | None = None
+    enisaIdVendor: list[EnisaVendorInfo] | None = None
+    enisaUuid: str | None = None
+    epss: float | None = None
     id: str
-    references: str
+    references: str | None = None
 
 
 class LatestVulnerability(VulnerabilityBase):
@@ -46,7 +47,7 @@ class CriticalVulnerability(VulnerabilityBase):
 
 
 class ExploitedVulnerability(VulnerabilityBase):
-    exploitedSince: str
+    exploitedSince: str | None = None
 
 
 class VulnerabilityItem(VulnerabilityBase):
@@ -90,24 +91,27 @@ class ENISAVulnerabilityByID(BaseModel):
     enisaIdProduct: list[EnisaProductInfo] | None = None
     enisaIdVendor: list[EnisaVendorInfo] | None = None
     enisaIdVulnerability: list[ENISAVulnWrapper] | None = None
+    enisaUuid: str | None = None
     epss: float | None = None
     id: str
     references: str | None = None
 
 
 class ENISAVulnerability(BaseModel):
-    aliases: str
-    assigner: str
-    baseScore: float
-    baseScoreVector: str
-    baseScoreVersion: str
-    datePublished: str
-    dateUpdated: str
-    description: str
-    enisaIdVendor: list[EnisaVendorInfo]
-    epss: float
+    aliases: str | None = None
+    assigner: str | None = None
+    baseScore: float | None = None
+    baseScoreVector: str | None = None
+    baseScoreVersion: str | None = None
+    datePublished: str | None = None
+    dateUpdated: str | None = None
+    description: str | None = None
+    enisaIdProduct: list[EnisaProductInfo] | None = None
+    enisaIdVendor: list[EnisaVendorInfo] | None = None
+    enisaUuid: str | None = None
+    epss: float | None = None
     id: str
-    references: str
+    references: str | None = None
 
 
 class ENISAAdvisoryWrapper(BaseModel):

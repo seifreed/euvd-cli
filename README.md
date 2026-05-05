@@ -16,14 +16,13 @@ pip install -e .
 ## Usage
 
 ```bash
-python euvd-cli.py                          # interactive menu
 python euvd-cli.py latest                    # latest vulnerabilities
 python euvd-cli.py critical                  # critical vulnerabilities
 python euvd-cli.py exploited                 # exploited vulnerabilities
 python euvd-cli.py search-enisa EUVD-2025-4893
 python euvd-cli.py search-advisory oxas-adv-2024-0002
 python euvd-cli.py search --text "Windows" --size 10
-python euvd-cli.py search --exploited true --size 5
+python euvd-cli.py search --exploited --size 5
 python euvd-cli.py stats
 python euvd-cli.py kev-dump
 python euvd-cli.py kev-dump --save
@@ -31,7 +30,7 @@ python euvd-cli.py kev-dump -o kev.json
 python euvd-cli.py selftest
 ```
 
-Search params: `--text`, `--vendor`, `--product`, `--assigner`, `--from-score`, `--to-score`, `--from-epss`, `--to-epss`, `--exploited`, `--size` (max 100).
+Search params: `--text`, `--vendor`, `--product`, `--assigner`, `--from-score`, `--to-score`, `--from-epss`, `--to-epss`, `--from-date`, `--to-date`, `--exploited/--not-exploited`, `--size` (max 100), `--page`.
 
 Note: vendor, product, CVSS score filters may return 403 from the API.
 

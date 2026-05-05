@@ -7,7 +7,7 @@ from pathlib import Path
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from euvd_python.cli import cli, EUVDCLIApp
+from euvd_python.cli import cli
 
 
 def main():
@@ -15,12 +15,7 @@ def main():
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-
-    if len(sys.argv) == 1:
-        app = EUVDCLIApp()
-        app.run_interactive()
-    else:
-        cli()
+    cli()
 
 
 if __name__ == "__main__":
