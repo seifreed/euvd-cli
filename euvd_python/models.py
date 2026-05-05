@@ -1,7 +1,3 @@
-"""
-Data models for EUVD API responses using Pydantic.
-"""
-
 from typing import Any
 from pydantic import BaseModel
 

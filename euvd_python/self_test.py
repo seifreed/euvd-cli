@@ -1,17 +1,13 @@
-"""
-Self-test module for testing all EUVD API endpoints.
-"""
-
 from .api_client import EUVDAPIClient
 
 
 def _test_endpoint(label: str, func, *args, **kwargs) -> bool:
     try:
         func(*args, **kwargs)
-        print(f"✅ {label}: OK")
+        print(f"PASS {label}")
         return True
     except Exception as e:
-        print(f"❌ {label}: {e}")
+        print(f"FAIL {label}: {e}")
         return False
 
 
@@ -46,7 +42,7 @@ def run_self_test() -> bool:
         )
         _test_endpoint("Vulnerability statistics", client.get_vulnerability_stats)
 
-        print("\nSelf-test completed! All EUVD endpoints tested.")
+        print("\nSelf-test completed.")
         return True
 
     finally:

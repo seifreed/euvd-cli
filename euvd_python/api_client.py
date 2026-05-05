@@ -1,7 +1,3 @@
-"""
-API Client for EUVD API with rate limiting and error handling.
-"""
-
 import time
 import logging
 import requests

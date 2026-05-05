@@ -1,7 +1,3 @@
-"""
-Command-line interface for the EUVD Python tool.
-"""
-
 import functools
 import logging
 from typing import Any
@@ -20,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 def print_banner():
-    """Print the application banner."""
     console.print()
     console.print("[bold cyan]EUVD Python CLI v1.0.0[/bold cyan]")
     console.print("[dim]ENISA EU Vulnerability Database Command Line Interface[/dim]")
@@ -31,12 +26,9 @@ def print_banner():
 
 
 def pretty_print_json(data: Any):
-    """Pretty print JSON data using Rich."""
     if hasattr(data, "model_dump"):
-        # Pydantic model
         json_data = data.model_dump()
     elif isinstance(data, list) and data and hasattr(data[0], "model_dump"):
-        # List of Pydantic models
         json_data = [item.model_dump() for item in data]
     else:
         json_data = data
@@ -46,8 +38,6 @@ def pretty_print_json(data: Any):
 
 
 def handle_api_error(func):
-    """Decorator to handle API errors gracefully."""
-
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -61,18 +51,14 @@ def handle_api_error(func):
 
 
 class EUVDCLIApp:
-    """Main CLI application class."""
-
     def __init__(self):
         self.client = EUVDAPIClient()
 
     def close(self):
-        """Clean up resources."""
         self.client.close()
 
     @handle_api_error
     def fetch_latest_vulnerabilities(self):
-        """Fetch and display latest vulnerabilities."""
         console.print("[yellow]Fetching latest vulnerabilities...[/yellow]")
         data = self.client.get_latest_vulnerabilities()
         pretty_print_json(data)
@@ -80,7 +66,6 @@ class EUVDCLIApp:
 
     @handle_api_error
     def fetch_exploited_vulnerabilities(self):
-        """Fetch and display exploited vulnerabilities."""
         console.print("[yellow]Fetching exploited vulnerabilities...[/yellow]")
         data = self.client.get_exploited_vulnerabilities()
         pretty_print_json(data)
@@ -88,7 +73,6 @@ class EUVDCLIApp:
 
     @handle_api_error
     def fetch_critical_vulnerabilities(self):
-        """Fetch and display critical vulnerabilities."""
         console.print("[yellow]Fetching critical vulnerabilities...[/yellow]")
         data = self.client.get_critical_vulnerabilities()
         pretty_print_json(data)
@@ -96,7 +80,6 @@ class EUVDCLIApp:
 
     @handle_api_error
     def search_by_enisa_id(self, enisa_id: str):
-        """Search vulnerability by ENISA ID."""
         console.print(f"[yellow]Searching for ENISA ID: {enisa_id}...[/yellow]")
         data = self.client.get_vulnerability_by_enisa_id(enisa_id)
         pretty_print_json(data)
@@ -104,7 +87,6 @@ class EUVDCLIApp:
 
     @handle_api_error
     def search_by_advisory_id(self, advisory_id: str):
-        """Search vulnerability by Advisory ID."""
         console.print(f"[yellow]Searching for Advisory ID: {advisory_id}...[/yellow]")
         data = self.client.get_advisory_by_id(advisory_id)
         pretty_print_json(data)
@@ -112,7 +94,6 @@ class EUVDCLIApp:
 
     @handle_api_error
     def show_vulnerability_stats(self):
-        """Show vulnerability statistics."""
         console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
         stats = self.client.get_vulnerability_stats()
 
@@ -133,11 +114,9 @@ class EUVDCLIApp:
 
     @handle_api_error
     def advanced_search_interactive(self):
-        """Perform advanced search with flexible filters."""
         console.print("[cyan]Advanced Search with Flexible Filters[/cyan]")
         console.print("[yellow]Leave empty to skip any filter[/yellow]")
 
-        # Collect search parameters
         text = Prompt.ask("Text search", default="")
         vendor = Prompt.ask("Vendor (e.g., Microsoft)", default="")
         product = Prompt.ask("Product (e.g., Windows)", default="")
@@ -158,7 +137,6 @@ class EUVDCLIApp:
 
         size = int(Prompt.ask("Results per page (max 100)", default="10"))
 
-        # Convert empty strings to None
         kwargs = {}
         if text:
             kwargs["text"] = text
@@ -190,12 +168,10 @@ class EUVDCLIApp:
         return data
 
     def run_self_test_interactive(self):
-        """Run the self-test suite."""
         console.print("[yellow]Running self-test suite...[/yellow]")
         run_self_test()
 
     def run_interactive(self):
-        """Run the interactive menu."""
         print_banner()
 
         try:
@@ -250,7 +226,6 @@ class EUVDCLIApp:
                     console.print("[yellow]Exiting...[/yellow]")
                     break
 
-                # Ask if user wants to continue
                 if choice != "9":
                     console.print()
                     if not Confirm.ask("Continue?", default=True):
@@ -264,7 +239,6 @@ class EUVDCLIApp:
             self.close()
 
 
-# Click commands for non-interactive usage
 @click.group()
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.help_option("-h", "--help")
