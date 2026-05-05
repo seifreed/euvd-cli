@@ -20,7 +20,7 @@ def print_banner():
     console.print("[bold cyan]EUVD Python CLI v1.0.0[/bold cyan]")
     console.print("[dim]ENISA EU Vulnerability Database Command Line Interface[/dim]")
     console.print(
-        "[dim]Author: Marc Rivero (@seifreed) | API: https://euvd.enisa.europa.eu/apidoc[/dim]"
+        "[dim]Marc Rivero Lopez | API: https://euvd.enisa.europa.eu/apidoc[/dim]"
     )
     console.print()
 

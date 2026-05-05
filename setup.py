@@ -13,12 +13,12 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="euvd-python-cli",
     version="1.0.0",
-    author="Marc Rivero",
-    author_email="seifreed@example.com",
+    author="Marc Rivero Lopez",
+    author_email="mriverolopez@gmail.com",
     description="A Python CLI tool for querying the ENISA EU Vulnerability Database (EUVD) API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/seifreed/euvd-python-cli",
+    url="https://github.com/seifreed/euvd-cli",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 5 - Production/Stable",
@@ -41,8 +41,8 @@ setup(
     },
     keywords="vulnerability security euvd enisa cli cybersecurity",
     project_urls={
-        "Bug Reports": "https://github.com/seifreed/euvd-python-cli/issues",
-        "Source": "https://github.com/seifreed/euvd-python-cli",
-        "Documentation": "https://github.com/seifreed/euvd-python-cli#readme",
+        "Bug Reports": "https://github.com/seifreed/euvd-cli/issues",
+        "Source": "https://github.com/seifreed/euvd-cli",
+        "Documentation": "https://github.com/seifreed/euvd-cli#readme",
     },
 ) 

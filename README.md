@@ -49,4 +49,4 @@ Base URL: `https://euvdservices.enisa.europa.eu/api`
 
 MIT
 
-Author: Marc Rivero (@seifreed)
+Author: Marc Rivero Lopez | mriverolopez@gmail.com
