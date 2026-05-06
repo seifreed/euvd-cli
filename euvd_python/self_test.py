@@ -15,7 +15,9 @@ class EndpointTest(NamedTuple):
     kwargs: dict[str, object]
 
 
-def _test_endpoint(label: str, func: Callable[..., object], *args, **kwargs) -> bool:
+def _test_endpoint(
+    label: str, func: Callable[..., object], *args: object, **kwargs: object
+) -> bool:
     try:
         result = func(*args, **kwargs)
         if isinstance(result, list):

@@ -2,9 +2,10 @@ import functools
 import json
 import logging
 import sys
+from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any
+from typing import Any, NoReturn
 
 import click
 import requests.exceptions
@@ -13,7 +14,7 @@ from rich.console import Console
 from rich.json import JSON
 from rich.table import Table
 
-from .api_client import EUVDAPIClient
+from .api_client import APIResponseError, EUVDAPIClient
 from . import __version__
 from .sarif import to_sarif_json
 from .self_test import run_self_test
@@ -30,7 +31,7 @@ def _api_client():
         client.close()
 
 
-def print_banner():
+def print_banner() -> None:
     console.print()
     console.print(f"[bold cyan]EUVD Python CLI v{__version__}[/bold cyan]")
     console.print("[dim]ENISA EU Vulnerability Database Command Line Interface[/dim]")
@@ -40,7 +41,7 @@ def print_banner():
     console.print()
 
 
-def pretty_print_json(data: Any):
+def pretty_print_json(data: Any) -> None:
     if hasattr(data, "model_dump"):
         json_data = data.model_dump()
     elif isinstance(data, list) and data and hasattr(data[0], "model_dump"):
@@ -52,7 +53,7 @@ def pretty_print_json(data: Any):
     console.print(json_obj)
 
 
-def output_data(data: Any, output_format: str):
+def output_data(data: Any, output_format: str) -> None:
     if output_format == "sarif":
         click.echo(to_sarif_json(data))
     else:
@@ -65,7 +66,9 @@ def _is_sarif() -> bool:
     )
 
 
-def _fetch_and_output(status_message: str, fetch_func):
+def _fetch_and_output(
+    status_message: str, fetch_func: Callable[[EUVDAPIClient], Any]
+) -> None:
     sarif = _is_sarif()
     if not sarif:
         print_banner()
@@ -76,50 +79,12 @@ def _fetch_and_output(status_message: str, fetch_func):
         output_data(data, "sarif" if sarif else "json")
 
 
-def _build_search_kwargs(
-    text: str | None,
-    vendor: str | None,
-    product: str | None,
-    assigner: str | None,
-    from_score: float | None,
-    to_score: float | None,
-    from_epss: float | None,
-    to_epss: float | None,
-    from_date: str | None,
-    to_date: str | None,
-    exploited: bool | None,
-    size: int,
-    page: int,
-) -> dict[str, Any]:
-    kwargs: dict[str, Any] = {}
-    if text:
-        kwargs["text"] = text
-    if vendor:
-        kwargs["vendor"] = vendor
-    if product:
-        kwargs["product"] = product
-    if assigner:
-        kwargs["assigner"] = assigner
-    if from_score is not None:
-        kwargs["from_score"] = from_score
-    if to_score is not None:
-        kwargs["to_score"] = to_score
-    if from_epss is not None:
-        kwargs["from_epss"] = from_epss
-    if to_epss is not None:
-        kwargs["to_epss"] = to_epss
-    if from_date:
-        kwargs["from_date"] = from_date
-    if to_date:
-        kwargs["to_date"] = to_date
-    if exploited is not None:
-        kwargs["exploited"] = exploited
-    kwargs["size"] = size
-    kwargs["page"] = page
-    return kwargs
+def _exit_with_error(message: str) -> NoReturn:
+    console.print(f"[red]{message}[/red]")
+    sys.exit(1)
 
 
-def _save_to_file(data: Any, filename: str, sarif: bool):
+def _save_to_file(data: Any, filename: str, sarif: bool) -> None:
     content = (
         to_sarif_json(data)
         if sarif
@@ -132,26 +97,23 @@ def _save_to_file(data: Any, filename: str, sarif: bool):
             indent=2,
         )
     )
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
     if not sarif:
         console.print(f"[green]Saved to {filename}[/green]")
 
 
-def handle_api_error(func):
+def handle_api_error(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
         except requests.RequestException as e:
-            console.print(f"[red]HTTP error: {e}[/red]")
-            sys.exit(1)
+            _exit_with_error(f"HTTP error: {e}")
         except ValidationError as e:
-            console.print(f"[red]Data validation error: {e}[/red]")
-            sys.exit(1)
-        except ValueError as e:
-            console.print(f"[red]Error: {e}[/red]")
-            sys.exit(1)
+            _exit_with_error(f"Validation error: {e}")
+        except (APIResponseError, ValueError) as e:
+            _exit_with_error(f"Error: {e}")
 
     return wrapper
 
@@ -254,25 +216,23 @@ def search(
     if not sarif:
         print_banner()
     with _api_client() as client:
-        kwargs = _build_search_kwargs(
-            text,
-            vendor,
-            product,
-            assigner,
-            from_score,
-            to_score,
-            from_epss,
-            to_epss,
-            from_date,
-            to_date,
-            exploited,
-            size,
-            page,
-        )
-
         if not sarif:
-            console.print(f"[yellow]Searching with filters: {kwargs}[/yellow]")
-        data = client.search_vulnerabilities(**kwargs)
+            console.print("[yellow]Searching vulnerabilities...[/yellow]")
+        data = client.search_vulnerabilities(
+            text=text,
+            vendor=vendor,
+            product=product,
+            assigner=assigner,
+            from_score=from_score,
+            to_score=to_score,
+            from_epss=from_epss,
+            to_epss=to_epss,
+            from_date=from_date,
+            to_date=to_date,
+            exploited=exploited,
+            size=size,
+            page=page,
+        )
         if not sarif:
             console.print(
                 f"[green]Found {data.total} total vulnerabilities, showing {len(data.items)} results[/green]"

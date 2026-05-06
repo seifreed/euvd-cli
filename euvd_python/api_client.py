@@ -21,6 +21,11 @@ T = TypeVar("T", bound=BaseModel)
 logger = logging.getLogger(__name__)
 
 RATE_LIMIT_INTERVAL = 6.0
+MAX_PAGE_SIZE = 100
+
+
+class APIResponseError(Exception):
+    pass
 
 
 class RateLimiter:
@@ -28,7 +33,7 @@ class RateLimiter:
         self.interval = interval
         self.last_request = 0.0
 
-    def wait_if_needed(self):
+    def wait_if_needed(self) -> None:
         current_time = time.time()
         time_since_last = current_time - self.last_request
 
@@ -68,7 +73,7 @@ class EUVDAPIClient:
     def _request_list(self, endpoint: str, model_class: Type[T]) -> list[T]:
         data = self._fetch(endpoint)
         if not isinstance(data, list):
-            raise ValueError(f"Expected list response, got {type(data)}")
+            raise APIResponseError(f"Expected list response, got {type(data)}")
         return [model_class.model_validate(item) for item in data]
 
     def get_latest_vulnerabilities(self) -> list[LatestVulnerability]:
@@ -130,7 +135,7 @@ class EUVDAPIClient:
             params["text"] = text
 
         params["page"] = str(page)
-        params["size"] = str(min(size, 100))
+        params["size"] = str(min(size, MAX_PAGE_SIZE))
 
         return self._request("/search", VulnerabilityQueryResponse, params=params)
 
@@ -144,5 +149,5 @@ class EUVDAPIClient:
             exploited_count=len(self.get_exploited_vulnerabilities()),
         )
 
-    def close(self):
+    def close(self) -> None:
         self.session.close()

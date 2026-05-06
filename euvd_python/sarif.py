@@ -23,15 +23,20 @@ TOOL_NAME = "EUVD CLI"
 TOOL_VERSION = _pkg_version
 TOOL_URI = "https://euvd.enisa.europa.eu"
 
+CVSS_CRITICAL_THRESHOLD = 9.0
+CVSS_HIGH_THRESHOLD = 7.0
+CVSS_MEDIUM_THRESHOLD = 4.0
+EPSS_PERCENT_FACTOR = 100
+
 
 def _score_to_level(base_score: float | None) -> str:
     if base_score is None:
         return "none"
-    if base_score >= 9.0:
+    if base_score >= CVSS_CRITICAL_THRESHOLD:
         return "error"
-    if base_score >= 7.0:
+    if base_score >= CVSS_HIGH_THRESHOLD:
         return "warning"
-    if base_score >= 4.0:
+    if base_score >= CVSS_MEDIUM_THRESHOLD:
         return "note"
     return "none"
 
@@ -102,7 +107,7 @@ def _build_vulnerability_result(
         properties.update(extra_properties)
 
     if vuln.epss is not None:
-        result["rank"] = vuln.epss * 100
+        result["rank"] = vuln.epss * EPSS_PERCENT_FACTOR
 
     if fingerprints:
         result["fingerprints"] = fingerprints
