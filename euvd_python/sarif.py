@@ -11,6 +11,7 @@ from .models import (
     KevEntry,
     VulnerabilityBase,
     VulnerabilityQueryResponse,
+    VulnerabilityStats,
 )
 
 SARIF_VERSION = "2.1.0"
@@ -60,31 +61,28 @@ def _build_vendors(
     return [{"id": v.id, "name": v.vendor.name} for v in vendors]
 
 
+def _optional_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in fields.items() if v is not None and v is not False}
+
+
 def _build_common_properties(
     vuln: VulnerabilityBase | ENISAVulnerabilityByID,
 ) -> dict[str, Any]:
-    properties: dict[str, Any] = {}
-    if vuln.baseScore is not None:
-        properties["baseScore"] = vuln.baseScore
-    if vuln.aliases:
-        properties["aliases"] = vuln.aliases
-    if vuln.references:
-        properties["references"] = vuln.references
-    if vuln.assigner:
-        properties["assigner"] = vuln.assigner
-    if vuln.datePublished:
-        properties["datePublished"] = vuln.datePublished
-    if vuln.dateUpdated:
-        properties["dateUpdated"] = vuln.dateUpdated
-    if vuln.epss is not None:
-        properties["epss"] = vuln.epss
     products = _build_products(vuln.enisaIdProduct)
-    if products:
-        properties["products"] = products
     vendors = _build_vendors(vuln.enisaIdVendor)
-    if vendors:
-        properties["vendors"] = vendors
-    return properties
+    return _optional_fields(
+        {
+            "baseScore": vuln.baseScore,
+            "aliases": vuln.aliases,
+            "references": vuln.references,
+            "assigner": vuln.assigner,
+            "datePublished": vuln.datePublished,
+            "dateUpdated": vuln.dateUpdated,
+            "epss": vuln.epss,
+            "products": products,
+            "vendors": vendors,
+        }
+    )
 
 
 def _build_vulnerability_result(
@@ -137,22 +135,22 @@ def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
         "message": {"text": advisory.description or "Advisory lookup"},
     }
 
-    properties: dict[str, Any] = {}
-    if advisory.baseScore is not None:
-        properties["baseScore"] = advisory.baseScore
-    if advisory.aliases:
-        properties["aliases"] = advisory.aliases
-    if advisory.datePublished:
-        properties["datePublished"] = advisory.datePublished
-    if advisory.dateUpdated:
-        properties["dateUpdated"] = advisory.dateUpdated
     products = _build_products(advisory.advisoryProduct)
-    if products:
-        properties["products"] = products
-    if advisory.enisaIdAdvisories:
-        properties["relatedVulnerabilityIds"] = [
-            a.id for a in advisory.enisaIdAdvisories
-        ]
+    related_ids = (
+        [a.id for a in advisory.enisaIdAdvisories]
+        if advisory.enisaIdAdvisories
+        else None
+    )
+    properties = _optional_fields(
+        {
+            "baseScore": advisory.baseScore,
+            "aliases": advisory.aliases,
+            "datePublished": advisory.datePublished,
+            "dateUpdated": advisory.dateUpdated,
+            "products": products,
+            "relatedVulnerabilityIds": related_ids,
+        }
+    )
 
     if properties:
         result["properties"] = properties
@@ -236,12 +234,7 @@ def to_sarif_json(data: Any) -> str:
         results = [kev_entry_to_result(e) for e in data]
         return json.dumps(build_sarif_log(results), indent=2)
 
-    if isinstance(data, dict):
-        return json.dumps(data, indent=2)
-
-    if hasattr(data, "model_dump"):
+    if isinstance(data, VulnerabilityStats):
         return json.dumps(data.model_dump(), indent=2)
-    if isinstance(data, list) and data and hasattr(data[0], "model_dump"):
-        return json.dumps([item.model_dump() for item in data], indent=2)
 
-    return json.dumps(data, indent=2, default=str)
+    raise TypeError(f"Cannot convert {type(data).__name__} to SARIF")

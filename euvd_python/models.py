@@ -128,3 +128,9 @@ class KevEntry(BaseModel):
     sources: list[str]
     vendorProject: str | None = None
     product: str | None = None
+
+
+class VulnerabilityStats(BaseModel):
+    latest_count: int
+    critical_count: int
+    exploited_count: int

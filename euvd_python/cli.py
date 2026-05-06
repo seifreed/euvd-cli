@@ -19,7 +19,6 @@ from .sarif import to_sarif_json
 from .self_test import run_self_test
 
 console = Console()
-logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -66,15 +65,77 @@ def _is_sarif() -> bool:
     )
 
 
-def _fetch_and_output(label: str, fetch_func):
+def _fetch_and_output(status_message: str, fetch_func):
     sarif = _is_sarif()
     if not sarif:
         print_banner()
     with _api_client() as client:
         if not sarif:
-            console.print(f"[yellow]{label}[/yellow]")
+            console.print(f"[yellow]{status_message}[/yellow]")
         data = fetch_func(client)
         output_data(data, "sarif" if sarif else "json")
+
+
+def _build_search_kwargs(
+    text: str | None,
+    vendor: str | None,
+    product: str | None,
+    assigner: str | None,
+    from_score: float | None,
+    to_score: float | None,
+    from_epss: float | None,
+    to_epss: float | None,
+    from_date: str | None,
+    to_date: str | None,
+    exploited: bool | None,
+    size: int,
+    page: int,
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {}
+    if text:
+        kwargs["text"] = text
+    if vendor:
+        kwargs["vendor"] = vendor
+    if product:
+        kwargs["product"] = product
+    if assigner:
+        kwargs["assigner"] = assigner
+    if from_score is not None:
+        kwargs["from_score"] = from_score
+    if to_score is not None:
+        kwargs["to_score"] = to_score
+    if from_epss is not None:
+        kwargs["from_epss"] = from_epss
+    if to_epss is not None:
+        kwargs["to_epss"] = to_epss
+    if from_date:
+        kwargs["from_date"] = from_date
+    if to_date:
+        kwargs["to_date"] = to_date
+    if exploited is not None:
+        kwargs["exploited"] = exploited
+    kwargs["size"] = size
+    kwargs["page"] = page
+    return kwargs
+
+
+def _save_to_file(data: Any, filename: str, sarif: bool):
+    content = (
+        to_sarif_json(data)
+        if sarif
+        else json.dumps(
+            (
+                [item.model_dump() for item in data]
+                if isinstance(data, list)
+                else data.model_dump()
+            ),
+            indent=2,
+        )
+    )
+    with open(filename, "w") as f:
+        f.write(content)
+    if not sarif:
+        console.print(f"[green]Saved to {filename}[/green]")
 
 
 def handle_api_error(func):
@@ -84,15 +145,12 @@ def handle_api_error(func):
             return func(*args, **kwargs)
         except requests.RequestException as e:
             console.print(f"[red]HTTP error: {e}[/red]")
-            logger.error(f"HTTP error: {e}")
             sys.exit(1)
         except ValidationError as e:
             console.print(f"[red]Data validation error: {e}[/red]")
-            logger.error(f"Data validation error: {e}")
             sys.exit(1)
         except ValueError as e:
             console.print(f"[red]Error: {e}[/red]")
-            logger.error(f"Error: {e}")
             sys.exit(1)
 
     return wrapper
@@ -196,31 +254,21 @@ def search(
     if not sarif:
         print_banner()
     with _api_client() as client:
-        kwargs: dict[str, Any] = {}
-        if text:
-            kwargs["text"] = text
-        if vendor:
-            kwargs["vendor"] = vendor
-        if product:
-            kwargs["product"] = product
-        if assigner:
-            kwargs["assigner"] = assigner
-        if from_score is not None:
-            kwargs["from_score"] = from_score
-        if to_score is not None:
-            kwargs["to_score"] = to_score
-        if from_epss is not None:
-            kwargs["from_epss"] = from_epss
-        if to_epss is not None:
-            kwargs["to_epss"] = to_epss
-        if from_date:
-            kwargs["from_date"] = from_date
-        if to_date:
-            kwargs["to_date"] = to_date
-        if exploited is not None:
-            kwargs["exploited"] = exploited
-        kwargs["size"] = size
-        kwargs["page"] = page
+        kwargs = _build_search_kwargs(
+            text,
+            vendor,
+            product,
+            assigner,
+            from_score,
+            to_score,
+            from_epss,
+            to_epss,
+            from_date,
+            to_date,
+            exploited,
+            size,
+            page,
+        )
 
         if not sarif:
             console.print(f"[yellow]Searching with filters: {kwargs}[/yellow]")
@@ -244,22 +292,16 @@ def stats():
         stats_data = client.get_vulnerability_stats()
 
         if sarif:
-            click.echo(json.dumps(stats_data, indent=2))
+            output_data(stats_data, "sarif")
             return
 
         table = Table(title="EUVD Vulnerability Statistics")
         table.add_column("Category", style="cyan", no_wrap=True)
         table.add_column("Count", style="white")
 
-        table.add_row(
-            "Latest Vulnerabilities", str(stats_data.get("latest_count", "N/A"))
-        )
-        table.add_row(
-            "Critical Vulnerabilities", str(stats_data.get("critical_count", "N/A"))
-        )
-        table.add_row(
-            "Exploited Vulnerabilities", str(stats_data.get("exploited_count", "N/A"))
-        )
+        table.add_row("Latest Vulnerabilities", str(stats_data.latest_count))
+        table.add_row("Critical Vulnerabilities", str(stats_data.critical_count))
+        table.add_row("Exploited Vulnerabilities", str(stats_data.exploited_count))
 
         console.print(table)
 
@@ -286,20 +328,13 @@ def kev_dump(output: str | None, save: bool):
             else:
                 ext = ".sarif.json" if sarif else ".json"
                 filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
-            content = (
-                to_sarif_json(data)
-                if sarif
-                else json.dumps([item.model_dump() for item in data], indent=2)
-            )
-            with open(filename, "w") as f:
-                f.write(content)
-            if not sarif:
-                console.print(f"[green]Saved to {filename}[/green]")
+            _save_to_file(data, filename, sarif)
         else:
             output_data(data, output_format)
 
 
 @cli.command(help="Run the self-test suite.")
+@handle_api_error
 def selftest():
     print_banner()
     if not run_self_test():

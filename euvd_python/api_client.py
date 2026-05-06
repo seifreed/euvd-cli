@@ -12,6 +12,7 @@ from .models import (
     AdvisoryByID,
     VulnerabilityQueryResponse,
     KevEntry,
+    VulnerabilityStats,
 )
 from . import __version__
 
@@ -33,7 +34,7 @@ class RateLimiter:
 
         if time_since_last < self.interval:
             sleep_time = self.interval - time_since_last
-            logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f} seconds")
+            logger.debug("Rate limiting: sleeping for %.2f seconds", sleep_time)
             time.sleep(sleep_time)
 
         self.last_request = time.time()
@@ -136,12 +137,12 @@ class EUVDAPIClient:
     def get_kev_dump(self) -> list[KevEntry]:
         return self._request_list("/kev/dump", KevEntry)
 
-    def get_vulnerability_stats(self) -> dict[str, int]:
-        return {
-            "latest_count": len(self.get_latest_vulnerabilities()),
-            "critical_count": len(self.get_critical_vulnerabilities()),
-            "exploited_count": len(self.get_exploited_vulnerabilities()),
-        }
+    def get_vulnerability_stats(self) -> VulnerabilityStats:
+        return VulnerabilityStats(
+            latest_count=len(self.get_latest_vulnerabilities()),
+            critical_count=len(self.get_critical_vulnerabilities()),
+            exploited_count=len(self.get_exploited_vulnerabilities()),
+        )
 
     def close(self):
         self.session.close()
