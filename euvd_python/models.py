@@ -130,6 +130,22 @@ class KevEntry(BaseModel):
     product: str | None = None
 
 
+class SearchFilters(BaseModel):
+    from_score: float | None = None
+    to_score: float | None = None
+    from_epss: float | None = None
+    to_epss: float | None = None
+    from_date: str | None = None
+    to_date: str | None = None
+    product: str | None = None
+    vendor: str | None = None
+    assigner: str | None = None
+    exploited: bool | None = None
+    text: str | None = None
+    page: int = 0
+    size: int = 10
+
+
 class VulnerabilityStats(BaseModel):
     latest_count: int
     critical_count: int

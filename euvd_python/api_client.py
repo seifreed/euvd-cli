@@ -12,6 +12,7 @@ from .models import (
     AdvisoryByID,
     VulnerabilityQueryResponse,
     KevEntry,
+    SearchFilters,
     VulnerabilityStats,
 )
 from . import __version__
@@ -94,48 +95,35 @@ class EUVDAPIClient:
         return self._request("/advisory", AdvisoryByID, params={"id": advisory_id})
 
     def search_vulnerabilities(
-        self,
-        from_score: float | None = None,
-        to_score: float | None = None,
-        from_epss: float | None = None,
-        to_epss: float | None = None,
-        from_date: str | None = None,
-        to_date: str | None = None,
-        product: str | None = None,
-        vendor: str | None = None,
-        assigner: str | None = None,
-        exploited: bool | None = None,
-        text: str | None = None,
-        page: int = 0,
-        size: int = 10,
+        self, filters: SearchFilters
     ) -> VulnerabilityQueryResponse:
         params: dict[str, str] = {}
 
-        if from_score is not None:
-            params["fromScore"] = str(from_score)
-        if to_score is not None:
-            params["toScore"] = str(to_score)
-        if from_epss is not None:
-            params["fromEpss"] = str(from_epss)
-        if to_epss is not None:
-            params["toEpss"] = str(to_epss)
-        if from_date:
-            params["fromDate"] = from_date
-        if to_date:
-            params["toDate"] = to_date
-        if product:
-            params["product"] = product
-        if vendor:
-            params["vendor"] = vendor
-        if assigner:
-            params["assigner"] = assigner
-        if exploited is not None:
-            params["exploited"] = str(exploited).lower()
-        if text:
-            params["text"] = text
+        if filters.from_score is not None:
+            params["fromScore"] = str(filters.from_score)
+        if filters.to_score is not None:
+            params["toScore"] = str(filters.to_score)
+        if filters.from_epss is not None:
+            params["fromEpss"] = str(filters.from_epss)
+        if filters.to_epss is not None:
+            params["toEpss"] = str(filters.to_epss)
+        if filters.from_date:
+            params["fromDate"] = filters.from_date
+        if filters.to_date:
+            params["toDate"] = filters.to_date
+        if filters.product:
+            params["product"] = filters.product
+        if filters.vendor:
+            params["vendor"] = filters.vendor
+        if filters.assigner:
+            params["assigner"] = filters.assigner
+        if filters.exploited is not None:
+            params["exploited"] = str(filters.exploited).lower()
+        if filters.text:
+            params["text"] = filters.text
 
-        params["page"] = str(page)
-        params["size"] = str(min(size, MAX_PAGE_SIZE))
+        params["page"] = str(filters.page)
+        params["size"] = str(min(filters.size, MAX_PAGE_SIZE))
 
         return self._request("/search", VulnerabilityQueryResponse, params=params)
 

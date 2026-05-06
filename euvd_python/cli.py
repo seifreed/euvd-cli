@@ -5,17 +5,19 @@ import sys
 from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Any, NoReturn
 
 import click
 import requests.exceptions
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.json import JSON
 from rich.table import Table
 
 from .api_client import APIResponseError, EUVDAPIClient
 from . import __version__
+from .models import SearchFilters
 from .sarif import to_sarif_json
 from .self_test import run_self_test
 
@@ -42,9 +44,10 @@ def print_banner() -> None:
 
 
 def pretty_print_json(data: Any) -> None:
-    if hasattr(data, "model_dump"):
+    json_data: Any
+    if isinstance(data, BaseModel):
         json_data = data.model_dump()
-    elif isinstance(data, list) and data and hasattr(data[0], "model_dump"):
+    elif isinstance(data, list) and data and isinstance(data[0], BaseModel):
         json_data = [item.model_dump() for item in data]
     else:
         json_data = data
@@ -67,7 +70,9 @@ def _is_sarif() -> bool:
 
 
 def _fetch_and_output(
-    status_message: str, fetch_func: Callable[[EUVDAPIClient], Any]
+    status_message: str,
+    fetch_func: Callable[[EUVDAPIClient], Any],
+    post_fetch: Callable[[Any], None] | None = None,
 ) -> None:
     sarif = _is_sarif()
     if not sarif:
@@ -76,6 +81,8 @@ def _fetch_and_output(
         if not sarif:
             console.print(f"[yellow]{status_message}[/yellow]")
         data = fetch_func(client)
+        if post_fetch and not sarif:
+            post_fetch(data)
         output_data(data, "sarif" if sarif else "json")
 
 
@@ -85,20 +92,16 @@ def _exit_with_error(message: str) -> NoReturn:
 
 
 def _save_to_file(data: Any, filename: str, sarif: bool) -> None:
-    content = (
-        to_sarif_json(data)
-        if sarif
-        else json.dumps(
-            (
-                [item.model_dump() for item in data]
-                if isinstance(data, list)
-                else data.model_dump()
-            ),
-            indent=2,
-        )
-    )
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(content)
+    if sarif:
+        content = to_sarif_json(data)
+    elif isinstance(data, list):
+        content = json.dumps([item.model_dump() for item in data], indent=2)
+    elif isinstance(data, BaseModel):
+        content = json.dumps(data.model_dump(), indent=2)
+    else:
+        content = json.dumps(data, indent=2)
+
+    Path(filename).write_text(content, encoding="utf-8")
     if not sarif:
         console.print(f"[green]Saved to {filename}[/green]")
 
@@ -212,32 +215,28 @@ def search(
     size: int,
     page: int,
 ):
-    sarif = _is_sarif()
-    if not sarif:
-        print_banner()
-    with _api_client() as client:
-        if not sarif:
-            console.print("[yellow]Searching vulnerabilities...[/yellow]")
-        data = client.search_vulnerabilities(
-            text=text,
-            vendor=vendor,
-            product=product,
-            assigner=assigner,
-            from_score=from_score,
-            to_score=to_score,
-            from_epss=from_epss,
-            to_epss=to_epss,
-            from_date=from_date,
-            to_date=to_date,
-            exploited=exploited,
-            size=size,
-            page=page,
-        )
-        if not sarif:
-            console.print(
-                f"[green]Found {data.total} total vulnerabilities, showing {len(data.items)} results[/green]"
-            )
-        output_data(data, "sarif" if sarif else "json")
+    filters = SearchFilters(
+        text=text,
+        vendor=vendor,
+        product=product,
+        assigner=assigner,
+        from_score=from_score,
+        to_score=to_score,
+        from_epss=from_epss,
+        to_epss=to_epss,
+        from_date=from_date,
+        to_date=to_date,
+        exploited=exploited,
+        size=size,
+        page=page,
+    )
+    _fetch_and_output(
+        "Searching vulnerabilities...",
+        lambda c: c.search_vulnerabilities(filters),
+        post_fetch=lambda data: console.print(
+            f"[green]Found {data.total} total vulnerabilities, showing {len(data.items)} results[/green]"
+        ),
+    )
 
 
 @cli.command(help="Show vulnerability statistics.")
@@ -267,10 +266,10 @@ def stats():
 
 
 @cli.command(help="Download KEV dump.")
-@click.option("--output", "-o", help="Save to file path")
+@click.option("--output", "-o", "output_path", help="Save to file path")
 @click.option("--save", is_flag=True, help="Save as kev_dump_YYYYMMDD_HHMMSS.json")
 @handle_api_error
-def kev_dump(output: str | None, save: bool):
+def kev_dump(output_path: str | None, save: bool):
     sarif = _is_sarif()
     if not sarif:
         print_banner()
@@ -282,9 +281,9 @@ def kev_dump(output: str | None, save: bool):
             console.print(f"[green]{len(data)} KEV entries[/green]")
 
         output_format = "sarif" if sarif else "json"
-        if output or save:
-            if output:
-                filename = output
+        if output_path or save:
+            if output_path:
+                filename = output_path
             else:
                 ext = ".sarif.json" if sarif else ".json"
                 filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
