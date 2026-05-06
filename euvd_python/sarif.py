@@ -10,6 +10,7 @@ from .models import (
     ExploitedVulnerability,
     KevEntry,
     VulnerabilityBase,
+    VulnerabilityCore,
     VulnerabilityQueryResponse,
     VulnerabilityStats,
 )
@@ -71,7 +72,7 @@ def _optional_fields(fields: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_common_properties(
-    vuln: VulnerabilityBase | ENISAVulnerabilityByID,
+    vuln: VulnerabilityCore,
 ) -> dict[str, Any]:
     products = _build_products(vuln.enisaIdProduct)
     vendors = _build_vendors(vuln.enisaIdVendor)
@@ -91,7 +92,7 @@ def _build_common_properties(
 
 
 def _build_vulnerability_result(
-    vuln: VulnerabilityBase | ENISAVulnerabilityByID,
+    vuln: VulnerabilityCore,
     extra_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
@@ -164,7 +165,7 @@ def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
 
 
 def kev_entry_to_result(entry: KevEntry) -> dict[str, Any]:
-    return {
+    result: dict[str, Any] = {
         "ruleId": entry.cveId,
         "level": "error",
         "kind": "fail",
@@ -172,14 +173,22 @@ def kev_entry_to_result(entry: KevEntry) -> dict[str, Any]:
             "text": f"Known exploited vulnerability: {entry.cveId} (EUVD: {entry.euvdId})"
         },
         "fingerprints": {"euvdId/v1": entry.euvdId},
-        "properties": {
+    }
+
+    properties = _optional_fields(
+        {
             "euvdId": entry.euvdId,
             "dateAdded": entry.dateAdded,
             "sources": entry.sources,
             "vendorProject": entry.vendorProject,
             "product": entry.product,
-        },
-    }
+        }
+    )
+
+    if properties:
+        result["properties"] = properties
+
+    return result
 
 
 def build_sarif_log(

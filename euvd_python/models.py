@@ -20,12 +20,11 @@ class EnisaVendorInfo(BaseModel):
     vendor: VendorName
 
 
-class VulnerabilityBase(BaseModel):
+class VulnerabilityCore(BaseModel):
+    id: str
     aliases: str | None = None
     assigner: str | None = None
     baseScore: float | None = None
-    baseScoreVector: str | None = None
-    baseScoreVersion: str | None = None
     datePublished: str | None = None
     dateUpdated: str | None = None
     description: str | None = None
@@ -33,8 +32,12 @@ class VulnerabilityBase(BaseModel):
     enisaIdVendor: list[EnisaVendorInfo] | None = None
     enisaUuid: str | None = None
     epss: float | None = None
-    id: str
     references: str | None = None
+
+
+class VulnerabilityBase(VulnerabilityCore):
+    baseScoreVector: str | None = None
+    baseScoreVersion: str | None = None
 
 
 class LatestVulnerability(VulnerabilityBase):
@@ -85,21 +88,9 @@ class ENISAVulnWrapper(BaseModel):
     vulnerability: VulnerabilityByID
 
 
-class ENISAVulnerabilityByID(BaseModel):
-    aliases: str | None = None
-    assigner: str | None = None
-    baseScore: float | None = None
-    datePublished: str | None = None
-    dateUpdated: str | None = None
-    description: str | None = None
+class ENISAVulnerabilityByID(VulnerabilityCore):
     enisaIdAdvisory: list[VulnerabilityAdvisory] | None = None
-    enisaIdProduct: list[EnisaProductInfo] | None = None
-    enisaIdVendor: list[EnisaVendorInfo] | None = None
     enisaIdVulnerability: list[ENISAVulnWrapper] | None = None
-    enisaUuid: str | None = None
-    epss: float | None = None
-    id: str
-    references: str | None = None
 
 
 class ENISAVulnerability(VulnerabilityBase):
