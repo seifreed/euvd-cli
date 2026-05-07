@@ -1,23 +1,20 @@
 import functools
-import json
 import logging
 import sys
 from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
 from typing import Any, NoReturn
 
 import click
 import requests.exceptions
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from rich.console import Console
-from rich.json import JSON
 from rich.table import Table
 
 from .api_client import APIResponseError, EUVDAPIClient
 from . import __version__
 from .models import SearchFilters
-from .sarif import to_sarif_json
+from .output import print_data, save_data
 from .self_test import run_self_test
 
 console = Console()
@@ -36,25 +33,6 @@ def print_banner() -> None:
         "[dim]Marc Rivero Lopez | API: https://euvd.enisa.europa.eu/apidoc[/dim]"
     )
     console.print()
-
-
-def _to_serializable(data: Any) -> Any:
-    if isinstance(data, BaseModel):
-        return data.model_dump()
-    if isinstance(data, list) and data and isinstance(data[0], BaseModel):
-        return [item.model_dump() for item in data]
-    return data
-
-
-def _pretty_print(data: Any) -> None:
-    console.print(JSON.from_data(_to_serializable(data)))
-
-
-def output_data(data: Any, output_format: str) -> None:
-    if output_format == "sarif":
-        click.echo(to_sarif_json(data))
-    else:
-        _pretty_print(data)
 
 
 def _output_format() -> str:
@@ -80,7 +58,7 @@ def _fetch_and_output(
         if renderer and not is_sarif:
             renderer(data)
         else:
-            output_data(data, output_format)
+            print_data(data, output_format)
 
 
 def _exit_with_error(message: str) -> NoReturn:
@@ -93,16 +71,6 @@ def _validate_range(
 ) -> None:
     if value is not None and (value < min_val or value > max_val):
         _exit_with_error(f"{name} must be between {min_val:.0f} and {max_val:.0f}")
-
-
-def _format_content(data: Any, sarif: bool) -> str:
-    if sarif:
-        return to_sarif_json(data)
-    return json.dumps(_to_serializable(data), indent=2)
-
-
-def _save_to_file(content: str, filename: str) -> None:
-    Path(filename).write_text(content, encoding="utf-8")
 
 
 def handle_api_error(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -291,18 +259,17 @@ def kev_dump(output_path: str | None, save: bool):
         data = client.get_kev_dump()
 
     if should_save:
-        if output_path:
-            filename = output_path
-        else:
-            ext = ".sarif.json" if is_sarif else ".json"
-            filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
-        _save_to_file(_format_content(data, is_sarif), filename)
+        ext = ".sarif.json" if is_sarif else ".json"
+        filename = (
+            output_path or f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
+        )
+        save_data(data, fmt, filename)
         if not is_sarif:
             console.print(f"[green]Saved to {filename}[/green]")
     else:
         if not is_sarif:
             console.print(f"[green]{len(data)} KEV entries[/green]")
-        output_data(data, fmt)
+        print_data(data, fmt)
 
 
 @cli.command(help="Run the self-test suite.")

@@ -25,33 +25,27 @@ RATE_LIMIT_INTERVAL = 6.0
 MAX_PAGE_SIZE = 100
 
 
+_PARAM_ALIASES = {
+    "from_score": "fromScore",
+    "to_score": "toScore",
+    "from_epss": "fromEpss",
+    "to_epss": "toEpss",
+    "from_date": "fromDate",
+    "to_date": "toDate",
+}
+
+
 def _build_search_params(filters: SearchFilters) -> dict[str, str]:
-    params: dict[str, str] = {}
-    if filters.from_score is not None:
-        params["fromScore"] = str(filters.from_score)
-    if filters.to_score is not None:
-        params["toScore"] = str(filters.to_score)
-    if filters.from_epss is not None:
-        params["fromEpss"] = str(filters.from_epss)
-    if filters.to_epss is not None:
-        params["toEpss"] = str(filters.to_epss)
-    if filters.from_date is not None:
-        params["fromDate"] = filters.from_date
-    if filters.to_date is not None:
-        params["toDate"] = filters.to_date
-    if filters.product is not None:
-        params["product"] = filters.product
-    if filters.vendor is not None:
-        params["vendor"] = filters.vendor
-    if filters.assigner is not None:
-        params["assigner"] = filters.assigner
-    if filters.exploited is not None:
-        params["exploited"] = str(filters.exploited).lower()
-    if filters.text is not None:
-        params["text"] = filters.text
-    params["page"] = str(filters.page)
-    params["size"] = str(min(filters.size, MAX_PAGE_SIZE))
-    return params
+    params = filters.model_dump(exclude_none=True)
+    result: dict[str, str] = {}
+    for key, value in params.items():
+        api_key = _PARAM_ALIASES.get(key, key)
+        if isinstance(value, bool):
+            result[api_key] = str(value).lower()
+        else:
+            result[api_key] = str(value)
+    result["size"] = str(min(filters.size, MAX_PAGE_SIZE))
+    return result
 
 
 class APIResponseError(Exception):
