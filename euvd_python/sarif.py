@@ -7,12 +7,10 @@ from .models import (
     EnisaProductInfo,
     EnisaVendorInfo,
     ENISAVulnerabilityByID,
-    ExploitedVulnerability,
     KevEntry,
     VulnerabilityBase,
     VulnerabilityCore,
     VulnerabilityQueryResponse,
-    VulnerabilityStats,
 )
 
 SARIF_VERSION = "2.1.0"
@@ -124,7 +122,7 @@ def vulnerability_to_result(vuln: VulnerabilityBase) -> dict[str, Any]:
         extra["baseScoreVector"] = vuln.baseScoreVector
     if vuln.baseScoreVersion:
         extra["baseScoreVersion"] = vuln.baseScoreVersion
-    if isinstance(vuln, ExploitedVulnerability) and vuln.exploitedSince:
+    if vuln.exploitedSince:
         extra["exploitedSince"] = vuln.exploitedSince
     return _build_vulnerability_result(vuln, extra_properties=extra if extra else None)
 
@@ -217,37 +215,42 @@ def build_sarif_log(
     }
 
 
+_SINGLE_CONVERTERS: list[tuple[type, Any]] = [
+    (
+        VulnerabilityQueryResponse,
+        lambda d: (
+            [vulnerability_to_result(v) for v in d.items],
+            {"totalResults": d.total},
+        ),
+    ),
+    (ENISAVulnerabilityByID, lambda d: ([enisa_vulnerability_to_result(d)], None)),
+    (AdvisoryByID, lambda d: ([advisory_to_result(d)], None)),
+    (VulnerabilityBase, lambda d: ([vulnerability_to_result(d)], None)),
+]
+
+_LIST_CONVERTERS: list[tuple[type, Any]] = [
+    (VulnerabilityBase, lambda items: [vulnerability_to_result(v) for v in items]),
+    (KevEntry, lambda items: [kev_entry_to_result(e) for e in items]),
+]
+
+
 def _to_sarif_results(data: Any) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    if isinstance(data, VulnerabilityQueryResponse):
-        return (
-            [vulnerability_to_result(v) for v in data.items],
-            {"totalResults": data.total},
-        )
+    for data_type, converter in _SINGLE_CONVERTERS:
+        if isinstance(data, data_type):
+            return converter(data)
 
     if isinstance(data, list):
         if not data:
             return [], None
-        if isinstance(data[0], VulnerabilityBase):
-            return [vulnerability_to_result(v) for v in data], None
-        if isinstance(data[0], KevEntry):
-            return [kev_entry_to_result(e) for e in data], None
-
-    if isinstance(data, VulnerabilityBase):
-        return [vulnerability_to_result(data)], None
-
-    if isinstance(data, ENISAVulnerabilityByID):
-        return [enisa_vulnerability_to_result(data)], None
-
-    if isinstance(data, AdvisoryByID):
-        return [advisory_to_result(data)], None
+        first_type = type(data[0])
+        for item_type, converter in _LIST_CONVERTERS:
+            if issubclass(first_type, item_type):
+                return converter(data), None
 
     raise TypeError(f"Cannot convert {type(data).__name__} to SARIF")
 
 
 def to_sarif_json(data: Any) -> str:
-    if isinstance(data, VulnerabilityStats):
-        return json.dumps(data.model_dump(), indent=2)
-
     results, run_properties = _to_sarif_results(data)
     sarif = build_sarif_log(results, run_properties=run_properties)
     return json.dumps(sarif, indent=2)

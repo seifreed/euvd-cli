@@ -38,6 +38,7 @@ class VulnerabilityCore(BaseModel):
 class VulnerabilityBase(VulnerabilityCore):
     baseScoreVector: str | None = None
     baseScoreVersion: str | None = None
+    exploitedSince: str | None = None
 
 
 class LatestVulnerability(VulnerabilityBase):
@@ -49,7 +50,7 @@ class CriticalVulnerability(VulnerabilityBase):
 
 
 class ExploitedVulnerability(VulnerabilityBase):
-    exploitedSince: str | None = None
+    pass
 
 
 class VulnerabilityItem(VulnerabilityBase):
@@ -137,34 +138,6 @@ class SearchFilters(BaseModel):
     text: str | None = None
     page: int = 0
     size: int = 10
-
-    def to_params(self) -> dict[str, str]:
-        params: dict[str, str] = {}
-        if self.from_score is not None:
-            params["fromScore"] = str(self.from_score)
-        if self.to_score is not None:
-            params["toScore"] = str(self.to_score)
-        if self.from_epss is not None:
-            params["fromEpss"] = str(self.from_epss)
-        if self.to_epss is not None:
-            params["toEpss"] = str(self.to_epss)
-        if self.from_date:
-            params["fromDate"] = self.from_date
-        if self.to_date:
-            params["toDate"] = self.to_date
-        if self.product:
-            params["product"] = self.product
-        if self.vendor:
-            params["vendor"] = self.vendor
-        if self.assigner:
-            params["assigner"] = self.assigner
-        if self.exploited is not None:
-            params["exploited"] = str(self.exploited).lower()
-        if self.text:
-            params["text"] = self.text
-        params["page"] = str(self.page)
-        params["size"] = str(self.size)
-        return params
 
 
 class VulnerabilityStats(BaseModel):

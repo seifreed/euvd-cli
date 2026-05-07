@@ -25,6 +25,35 @@ RATE_LIMIT_INTERVAL = 6.0
 MAX_PAGE_SIZE = 100
 
 
+def _build_search_params(filters: SearchFilters) -> dict[str, str]:
+    params: dict[str, str] = {}
+    if filters.from_score is not None:
+        params["fromScore"] = str(filters.from_score)
+    if filters.to_score is not None:
+        params["toScore"] = str(filters.to_score)
+    if filters.from_epss is not None:
+        params["fromEpss"] = str(filters.from_epss)
+    if filters.to_epss is not None:
+        params["toEpss"] = str(filters.to_epss)
+    if filters.from_date is not None:
+        params["fromDate"] = filters.from_date
+    if filters.to_date is not None:
+        params["toDate"] = filters.to_date
+    if filters.product is not None:
+        params["product"] = filters.product
+    if filters.vendor is not None:
+        params["vendor"] = filters.vendor
+    if filters.assigner is not None:
+        params["assigner"] = filters.assigner
+    if filters.exploited is not None:
+        params["exploited"] = str(filters.exploited).lower()
+    if filters.text is not None:
+        params["text"] = filters.text
+    params["page"] = str(filters.page)
+    params["size"] = str(min(filters.size, MAX_PAGE_SIZE))
+    return params
+
+
 class APIResponseError(Exception):
     pass
 
@@ -47,12 +76,17 @@ class RateLimiter:
 
 
 class EUVDAPIClient:
-    BASE_URL = "https://euvdservices.enisa.europa.eu/api"
-    TIMEOUT = 10.0
+    DEFAULT_BASE_URL = "https://euvdservices.enisa.europa.eu/api"
+    DEFAULT_TIMEOUT = 10.0
 
-    def __init__(self):
+    def __init__(
+        self,
+        base_url: str = DEFAULT_BASE_URL,
+        timeout: float = DEFAULT_TIMEOUT,
+    ):
+        self.base_url = base_url
+        self.timeout = timeout
         self.session = requests.Session()
-        self.session.timeout = self.TIMEOUT
         self.rate_limiter = RateLimiter()
         self.session.headers.update({"User-Agent": f"EUVD-Python-CLI/{__version__}"})
 
@@ -60,8 +94,8 @@ class EUVDAPIClient:
         self, endpoint: str, params: dict[str, str] | None = None
     ) -> dict | list:
         self.rate_limiter.wait_if_needed()
-        url = f"{self.BASE_URL}{endpoint}"
-        response = self.session.get(url, params=params)
+        url = f"{self.base_url}{endpoint}"
+        response = self.session.get(url, params=params, timeout=self.timeout)
         response.raise_for_status()
         return response.json()
 
@@ -97,8 +131,7 @@ class EUVDAPIClient:
     def search_vulnerabilities(
         self, filters: SearchFilters
     ) -> VulnerabilityQueryResponse:
-        params = filters.to_params()
-        params["size"] = str(min(filters.size, MAX_PAGE_SIZE))
+        params = _build_search_params(filters)
         return self._request("/search", VulnerabilityQueryResponse, params=params)
 
     def get_kev_dump(self) -> list[KevEntry]:

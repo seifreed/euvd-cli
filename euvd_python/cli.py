@@ -95,12 +95,13 @@ def _validate_range(
         _exit_with_error(f"{name} must be between {min_val:.0f} and {max_val:.0f}")
 
 
-def _save_to_file(data: Any, filename: str, sarif: bool) -> None:
+def _format_content(data: Any, sarif: bool) -> str:
     if sarif:
-        content = to_sarif_json(data)
-    else:
-        content = json.dumps(_to_serializable(data), indent=2)
+        return to_sarif_json(data)
+    return json.dumps(_to_serializable(data), indent=2)
 
+
+def _save_to_file(content: str, filename: str) -> None:
     Path(filename).write_text(content, encoding="utf-8")
 
 
@@ -263,17 +264,14 @@ def _render_stats(stats_data: Any) -> None:
 @cli.command(help="Show vulnerability statistics.")
 @handle_api_error
 def stats():
+    if _output_format() == "sarif":
+        _exit_with_error("SARIF format is not supported for statistics")
     _fetch_and_output(
         "Fetching vulnerability statistics...",
         lambda c: c.get_vulnerability_stats(),
         _output_format(),
         renderer=_render_stats,
     )
-
-
-def _render_kev_dump(data: Any) -> None:
-    console.print(f"[green]{len(data)} KEV entries[/green]")
-    output_data(data, "json")
 
 
 @cli.command(help="Download KEV dump.")
@@ -283,28 +281,28 @@ def _render_kev_dump(data: Any) -> None:
 def kev_dump(output_path: str | None, save: bool):
     fmt = _output_format()
     is_sarif = fmt == "sarif"
+    should_save = output_path or save
 
-    def _save_kev(client: EUVDAPIClient) -> Any:
+    if not is_sarif:
+        print_banner()
+    with EUVDAPIClient() as client:
+        if not is_sarif:
+            console.print("[yellow]Fetching KEV dump...[/yellow]")
         data = client.get_kev_dump()
-        if output_path or save:
-            if output_path:
-                filename = output_path
-            else:
-                ext = ".sarif.json" if is_sarif else ".json"
-                filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
-            _save_to_file(data, filename, is_sarif)
-            if not is_sarif:
-                console.print(f"[green]Saved to {filename}[/green]")
-            return data
-        return data
 
-    renderer = None if (output_path or save) else _render_kev_dump
-    _fetch_and_output(
-        "Fetching KEV dump...",
-        _save_kev,
-        fmt,
-        renderer=renderer,
-    )
+    if should_save:
+        if output_path:
+            filename = output_path
+        else:
+            ext = ".sarif.json" if is_sarif else ".json"
+            filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
+        _save_to_file(_format_content(data, is_sarif), filename)
+        if not is_sarif:
+            console.print(f"[green]Saved to {filename}[/green]")
+    else:
+        if not is_sarif:
+            console.print(f"[green]{len(data)} KEV entries[/green]")
+        output_data(data, fmt)
 
 
 @cli.command(help="Run the self-test suite.")

@@ -7,6 +7,9 @@ from .models import SearchFilters
 
 console = Console()
 
+_TEST_ENISA_ID = "EUVD-2025-4893"
+_TEST_ADVISORY_ID = "oxas-adv-2024-0002"
+
 
 def _test_endpoint(
     label: str, func: Callable[..., object], *args: object, **kwargs: object
@@ -38,12 +41,12 @@ def run_self_test() -> bool:
             _test_endpoint(
                 "ENISA ID search",
                 client.get_vulnerability_by_enisa_id,
-                "EUVD-2025-4893",
+                _TEST_ENISA_ID,
             ),
             _test_endpoint(
                 "Advisory ID search",
                 client.get_advisory_by_id,
-                "oxas-adv-2024-0002",
+                _TEST_ADVISORY_ID,
             ),
             _test_endpoint(
                 "Advanced search (text)",
