@@ -8,13 +8,11 @@ from typing import Any, NoReturn
 import click
 import requests.exceptions
 from pydantic import ValidationError
-from rich.table import Table
-
 from .api_client import APIResponseError, EUVDAPIClient
 from . import __version__
 from .console import console
 from .models import SearchFilters
-from .output import print_data, save_data
+from .output import print_data, render_stats, save_data
 from .self_test import run_self_test
 
 CVSS_MIN = 0.0
@@ -221,18 +219,6 @@ def search(
     )
 
 
-def _render_stats(stats_data: Any) -> None:
-    table = Table(title="EUVD Vulnerability Statistics")
-    table.add_column("Category", style="cyan", no_wrap=True)
-    table.add_column("Count", style="white")
-
-    table.add_row("Latest Vulnerabilities", str(stats_data.latest_count))
-    table.add_row("Critical Vulnerabilities", str(stats_data.critical_count))
-    table.add_row("Exploited Vulnerabilities", str(stats_data.exploited_count))
-
-    console.print(table)
-
-
 @cli.command(help="Show vulnerability statistics.")
 @handle_api_error
 def stats():
@@ -242,7 +228,7 @@ def stats():
         "Fetching vulnerability statistics...",
         lambda c: c.get_vulnerability_stats(),
         _output_format(),
-        renderer=_render_stats,
+        renderer=render_stats,
     )
 
 

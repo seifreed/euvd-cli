@@ -72,16 +72,16 @@ def _strip_falsy(fields: dict[str, Any]) -> dict[str, Any]:
 def _build_common_properties(
     vuln: VulnerabilityCore,
 ) -> dict[str, Any]:
-    products = _build_products(vuln.enisaIdProduct)
-    vendors = _build_vendors(vuln.enisaIdVendor)
+    products = _build_products(vuln.enisa_id_product)
+    vendors = _build_vendors(vuln.enisa_id_vendor)
     return _strip_falsy(
         {
-            "baseScore": vuln.baseScore,
+            "baseScore": vuln.base_score,
             "aliases": vuln.aliases,
             "references": vuln.references,
             "assigner": vuln.assigner,
-            "datePublished": vuln.datePublished,
-            "dateUpdated": vuln.dateUpdated,
+            "datePublished": vuln.date_published,
+            "dateUpdated": vuln.date_updated,
             "epss": vuln.epss,
             "products": products,
             "vendors": vendors,
@@ -95,12 +95,12 @@ def _build_vulnerability_result(
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ruleId": vuln.id,
-        "level": _cvss_to_sarif_level(vuln.baseScore),
+        "level": _cvss_to_sarif_level(vuln.base_score),
         "kind": "fail",
         "message": {"text": vuln.description or vuln.id},
     }
 
-    fingerprints = _build_fingerprints(vuln.enisaUuid)
+    fingerprints = _build_fingerprints(vuln.enisa_uuid)
     properties = _build_common_properties(vuln)
     if extra_properties:
         properties.update(extra_properties)
@@ -118,12 +118,12 @@ def _build_vulnerability_result(
 
 def vulnerability_to_result(vuln: VulnerabilityBase) -> dict[str, Any]:
     extra: dict[str, Any] = {}
-    if vuln.baseScoreVector:
-        extra["baseScoreVector"] = vuln.baseScoreVector
-    if vuln.baseScoreVersion:
-        extra["baseScoreVersion"] = vuln.baseScoreVersion
-    if vuln.exploitedSince:
-        extra["exploitedSince"] = vuln.exploitedSince
+    if vuln.base_score_vector:
+        extra["baseScoreVector"] = vuln.base_score_vector
+    if vuln.base_score_version:
+        extra["baseScoreVersion"] = vuln.base_score_version
+    if vuln.exploited_since:
+        extra["exploitedSince"] = vuln.exploited_since
     return _build_vulnerability_result(vuln, extra_properties=extra if extra else None)
 
 
@@ -134,23 +134,23 @@ def enisa_vulnerability_to_result(vuln: ENISAVulnerabilityByID) -> dict[str, Any
 def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ruleId": advisory.description or "unknown-advisory",
-        "level": _cvss_to_sarif_level(advisory.baseScore),
+        "level": _cvss_to_sarif_level(advisory.base_score),
         "kind": "review",
         "message": {"text": advisory.description or "Advisory lookup"},
     }
 
-    products = _build_products(advisory.advisoryProduct)
+    products = _build_products(advisory.advisory_product)
     related_ids = (
-        [a.id for a in advisory.enisaIdAdvisories]
-        if advisory.enisaIdAdvisories
+        [a.id for a in advisory.enisa_id_advisories]
+        if advisory.enisa_id_advisories
         else None
     )
     properties = _strip_falsy(
         {
-            "baseScore": advisory.baseScore,
+            "baseScore": advisory.base_score,
             "aliases": advisory.aliases,
-            "datePublished": advisory.datePublished,
-            "dateUpdated": advisory.dateUpdated,
+            "datePublished": advisory.date_published,
+            "dateUpdated": advisory.date_updated,
             "products": products,
             "relatedVulnerabilityIds": related_ids,
         }
@@ -164,21 +164,21 @@ def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
 
 def kev_entry_to_result(entry: KevEntry) -> dict[str, Any]:
     result: dict[str, Any] = {
-        "ruleId": entry.cveId,
+        "ruleId": entry.cve_id,
         "level": "error",
         "kind": "fail",
         "message": {
-            "text": f"Known exploited vulnerability: {entry.cveId} (EUVD: {entry.euvdId})"
+            "text": f"Known exploited vulnerability: {entry.cve_id} (EUVD: {entry.euvd_id})"
         },
-        "fingerprints": {"euvdId/v1": entry.euvdId},
+        "fingerprints": {"euvdId/v1": entry.euvd_id},
     }
 
     properties = _strip_falsy(
         {
-            "euvdId": entry.euvdId,
-            "dateAdded": entry.dateAdded,
+            "euvdId": entry.euvd_id,
+            "dateAdded": entry.date_added,
             "sources": entry.sources,
-            "vendorProject": entry.vendorProject,
+            "vendorProject": entry.vendor_project,
             "product": entry.product,
         }
     )
