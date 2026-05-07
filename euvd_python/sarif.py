@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from . import __version__ as _pkg_version
+from . import __version__
 from .models import (
     AdvisoryByID,
     EnisaProductInfo,
@@ -21,7 +21,7 @@ SARIF_SCHEMA = (
     "/sarif-schema-2.1.0.json"
 )
 TOOL_NAME = "EUVD CLI"
-TOOL_VERSION = _pkg_version
+TOOL_VERSION = __version__
 TOOL_URI = "https://euvd.enisa.europa.eu"
 
 CVSS_CRITICAL_THRESHOLD = 9.0
@@ -126,7 +126,7 @@ def vulnerability_to_result(vuln: VulnerabilityBase) -> dict[str, Any]:
         extra["baseScoreVersion"] = vuln.baseScoreVersion
     if isinstance(vuln, ExploitedVulnerability) and vuln.exploitedSince:
         extra["exploitedSince"] = vuln.exploitedSince
-    return _build_vulnerability_result(vuln, extra_properties=extra or None)
+    return _build_vulnerability_result(vuln, extra_properties=extra if extra else None)
 
 
 def enisa_vulnerability_to_result(vuln: ENISAVulnerabilityByID) -> dict[str, Any]:
@@ -193,15 +193,13 @@ def kev_entry_to_result(entry: KevEntry) -> dict[str, Any]:
 
 def build_sarif_log(
     results: list[dict[str, Any]],
-    tool_name: str = TOOL_NAME,
-    tool_version: str = TOOL_VERSION,
     run_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     run: dict[str, Any] = {
         "tool": {
             "driver": {
-                "name": tool_name,
-                "version": tool_version,
+                "name": TOOL_NAME,
+                "version": TOOL_VERSION,
                 "informationUri": TOOL_URI,
                 "rules": [{"id": r["ruleId"]} for r in results],
             }
@@ -226,11 +224,13 @@ def _to_sarif_results(data: Any) -> tuple[list[dict[str, Any]], dict[str, Any] |
             {"totalResults": data.total},
         )
 
-    if isinstance(data, list) and data and isinstance(data[0], VulnerabilityBase):
-        return [vulnerability_to_result(v) for v in data], None
-
-    if isinstance(data, list) and data and isinstance(data[0], KevEntry):
-        return [kev_entry_to_result(e) for e in data], None
+    if isinstance(data, list):
+        if not data:
+            return [], None
+        if isinstance(data[0], VulnerabilityBase):
+            return [vulnerability_to_result(v) for v in data], None
+        if isinstance(data[0], KevEntry):
+            return [kev_entry_to_result(e) for e in data], None
 
     if isinstance(data, VulnerabilityBase):
         return [vulnerability_to_result(data)], None

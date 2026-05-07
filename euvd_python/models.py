@@ -67,6 +67,8 @@ class VulnerabilityAdvisory(BaseModel):
     url: str | None = None
 
 
+# Does not inherit from VulnerabilityCore because the API returns different
+# JSON field names (vulnerabilityAdvisory vs enisaIdAdvisory, etc.)
 class VulnerabilityByID(BaseModel):
     assigner: str | None = None
     baseScore: float | None = None

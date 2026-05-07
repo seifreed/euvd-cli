@@ -66,6 +66,7 @@ def _fetch_and_output(
     fetch_func: Callable[[EUVDAPIClient], Any],
     output_format: str,
     post_fetch: Callable[[Any], None] | None = None,
+    renderer: Callable[[Any], None] | None = None,
 ) -> None:
     is_sarif = output_format == "sarif"
     if not is_sarif:
@@ -76,7 +77,10 @@ def _fetch_and_output(
         data = fetch_func(client)
         if post_fetch and not is_sarif:
             post_fetch(data)
-        output_data(data, output_format)
+        if renderer and not is_sarif:
+            renderer(data)
+        else:
+            output_data(data, output_format)
 
 
 def _exit_with_error(message: str) -> NoReturn:
@@ -98,8 +102,6 @@ def _save_to_file(data: Any, filename: str, sarif: bool) -> None:
         content = json.dumps(_to_serializable(data), indent=2)
 
     Path(filename).write_text(content, encoding="utf-8")
-    if not sarif:
-        console.print(f"[green]Saved to {filename}[/green]")
 
 
 def handle_api_error(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -246,31 +248,32 @@ def search(
     )
 
 
+def _render_stats(stats_data: Any) -> None:
+    table = Table(title="EUVD Vulnerability Statistics")
+    table.add_column("Category", style="cyan", no_wrap=True)
+    table.add_column("Count", style="white")
+
+    table.add_row("Latest Vulnerabilities", str(stats_data.latest_count))
+    table.add_row("Critical Vulnerabilities", str(stats_data.critical_count))
+    table.add_row("Exploited Vulnerabilities", str(stats_data.exploited_count))
+
+    console.print(table)
+
+
 @cli.command(help="Show vulnerability statistics.")
 @handle_api_error
 def stats():
-    fmt = _output_format()
-    is_sarif = fmt == "sarif"
-    if not is_sarif:
-        print_banner()
-    with EUVDAPIClient() as client:
-        if not is_sarif:
-            console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
-        stats_data = client.get_vulnerability_stats()
+    _fetch_and_output(
+        "Fetching vulnerability statistics...",
+        lambda c: c.get_vulnerability_stats(),
+        _output_format(),
+        renderer=_render_stats,
+    )
 
-        if is_sarif:
-            output_data(stats_data, "sarif")
-            return
 
-        table = Table(title="EUVD Vulnerability Statistics")
-        table.add_column("Category", style="cyan", no_wrap=True)
-        table.add_column("Count", style="white")
-
-        table.add_row("Latest Vulnerabilities", str(stats_data.latest_count))
-        table.add_row("Critical Vulnerabilities", str(stats_data.critical_count))
-        table.add_row("Exploited Vulnerabilities", str(stats_data.exploited_count))
-
-        console.print(table)
+def _render_kev_dump(data: Any) -> None:
+    console.print(f"[green]{len(data)} KEV entries[/green]")
+    output_data(data, "json")
 
 
 @cli.command(help="Download KEV dump.")
@@ -280,15 +283,9 @@ def stats():
 def kev_dump(output_path: str | None, save: bool):
     fmt = _output_format()
     is_sarif = fmt == "sarif"
-    if not is_sarif:
-        print_banner()
-    with EUVDAPIClient() as client:
-        if not is_sarif:
-            console.print("[yellow]Fetching KEV dump...[/yellow]")
-        data = client.get_kev_dump()
-        if not is_sarif:
-            console.print(f"[green]{len(data)} KEV entries[/green]")
 
+    def _save_kev(client: EUVDAPIClient) -> Any:
+        data = client.get_kev_dump()
         if output_path or save:
             if output_path:
                 filename = output_path
@@ -296,8 +293,18 @@ def kev_dump(output_path: str | None, save: bool):
                 ext = ".sarif.json" if is_sarif else ".json"
                 filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
             _save_to_file(data, filename, is_sarif)
-        else:
-            output_data(data, fmt)
+            if not is_sarif:
+                console.print(f"[green]Saved to {filename}[/green]")
+            return data
+        return data
+
+    renderer = None if (output_path or save) else _render_kev_dump
+    _fetch_and_output(
+        "Fetching KEV dump...",
+        _save_kev,
+        fmt,
+        renderer=renderer,
+    )
 
 
 @cli.command(help="Run the self-test suite.")

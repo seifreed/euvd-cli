@@ -79,10 +79,3 @@ def run_self_test() -> bool:
                 console.print(f"  - {label}")
 
     return passed == total
-
-
-if __name__ == "__main__":
-    import sys
-
-    success = run_self_test()
-    sys.exit(0 if success else 1)
