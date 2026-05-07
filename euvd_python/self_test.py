@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from contextlib import contextmanager
 
 from rich.console import Console
 
@@ -6,6 +7,15 @@ from .api_client import EUVDAPIClient
 from .models import SearchFilters
 
 console = Console()
+
+
+@contextmanager
+def _test_client():
+    client = EUVDAPIClient()
+    try:
+        yield client
+    finally:
+        client.close()
 
 
 def _test_endpoint(
@@ -24,11 +34,9 @@ def _test_endpoint(
 
 
 def run_self_test() -> bool:
-    client = EUVDAPIClient()
+    console.print("Running self-test against official EUVD API endpoints...")
 
-    try:
-        console.print("Running self-test against official EUVD API endpoints...")
-
+    with _test_client() as client:
         results: list[tuple[str, bool]] = [
             (
                 "Latest vulnerabilities",
@@ -99,20 +107,17 @@ def run_self_test() -> bool:
             ("KEV dump", _test_endpoint("KEV dump", client.get_kev_dump)),
         ]
 
-        passed = sum(1 for _, ok in results if ok)
-        total = len(results)
-        console.print(f"\n{passed}/{total} tests passed.")
+    passed = sum(1 for _, ok in results if ok)
+    total = len(results)
+    console.print(f"\n{passed}/{total} tests passed.")
 
-        if passed < total:
-            console.print("[red]Failed tests:[/red]")
-            for label, ok in results:
-                if not ok:
-                    console.print(f"  - {label}")
+    if passed < total:
+        console.print("[red]Failed tests:[/red]")
+        for label, ok in results:
+            if not ok:
+                console.print(f"  - {label}")
 
-        return passed == total
-
-    finally:
-        client.close()
+    return passed == total
 
 
 if __name__ == "__main__":

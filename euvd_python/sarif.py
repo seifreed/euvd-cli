@@ -219,36 +219,35 @@ def build_sarif_log(
     }
 
 
-def to_sarif_json(data: Any) -> str:
-    if isinstance(data, list) and data and isinstance(data[0], VulnerabilityBase):
-        results = [vulnerability_to_result(v) for v in data]
-        return json.dumps(build_sarif_log(results), indent=2)
-
-    if isinstance(data, VulnerabilityBase):
-        results = [vulnerability_to_result(data)]
-        return json.dumps(build_sarif_log(results), indent=2)
-
-    if isinstance(data, ENISAVulnerabilityByID):
-        results = [enisa_vulnerability_to_result(data)]
-        return json.dumps(build_sarif_log(results), indent=2)
-
-    if isinstance(data, AdvisoryByID):
-        results = [advisory_to_result(data)]
-        return json.dumps(build_sarif_log(results), indent=2)
-
+def _to_sarif_results(data: Any) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     if isinstance(data, VulnerabilityQueryResponse):
-        results = [vulnerability_to_result(v) for v in data.items]
-        sarif = build_sarif_log(
-            results,
-            run_properties={"totalResults": data.total},
+        return (
+            [vulnerability_to_result(v) for v in data.items],
+            {"totalResults": data.total},
         )
-        return json.dumps(sarif, indent=2)
+
+    if isinstance(data, list) and data and isinstance(data[0], VulnerabilityBase):
+        return [vulnerability_to_result(v) for v in data], None
 
     if isinstance(data, list) and data and isinstance(data[0], KevEntry):
-        results = [kev_entry_to_result(e) for e in data]
-        return json.dumps(build_sarif_log(results), indent=2)
+        return [kev_entry_to_result(e) for e in data], None
 
+    if isinstance(data, VulnerabilityBase):
+        return [vulnerability_to_result(data)], None
+
+    if isinstance(data, ENISAVulnerabilityByID):
+        return [enisa_vulnerability_to_result(data)], None
+
+    if isinstance(data, AdvisoryByID):
+        return [advisory_to_result(data)], None
+
+    raise TypeError(f"Cannot convert {type(data).__name__} to SARIF")
+
+
+def to_sarif_json(data: Any) -> str:
     if isinstance(data, VulnerabilityStats):
         return json.dumps(data.model_dump(), indent=2)
 
-    raise TypeError(f"Cannot convert {type(data).__name__} to SARIF")
+    results, run_properties = _to_sarif_results(data)
+    sarif = build_sarif_log(results, run_properties=run_properties)
+    return json.dumps(sarif, indent=2)

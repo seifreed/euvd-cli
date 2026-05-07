@@ -43,24 +43,23 @@ def print_banner() -> None:
     console.print()
 
 
-def pretty_print_json(data: Any) -> None:
-    json_data: Any
+def _to_serializable(data: Any) -> Any:
     if isinstance(data, BaseModel):
-        json_data = data.model_dump()
-    elif isinstance(data, list) and data and isinstance(data[0], BaseModel):
-        json_data = [item.model_dump() for item in data]
-    else:
-        json_data = data
+        return data.model_dump()
+    if isinstance(data, list) and data and isinstance(data[0], BaseModel):
+        return [item.model_dump() for item in data]
+    return data
 
-    json_obj = JSON.from_data(json_data)
-    console.print(json_obj)
+
+def _pretty_print(data: Any) -> None:
+    console.print(JSON.from_data(_to_serializable(data)))
 
 
 def output_data(data: Any, output_format: str) -> None:
     if output_format == "sarif":
         click.echo(to_sarif_json(data))
     else:
-        pretty_print_json(data)
+        _pretty_print(data)
 
 
 def _is_sarif() -> bool:
@@ -94,12 +93,8 @@ def _exit_with_error(message: str) -> NoReturn:
 def _save_to_file(data: Any, filename: str, sarif: bool) -> None:
     if sarif:
         content = to_sarif_json(data)
-    elif isinstance(data, list):
-        content = json.dumps([item.model_dump() for item in data], indent=2)
-    elif isinstance(data, BaseModel):
-        content = json.dumps(data.model_dump(), indent=2)
     else:
-        content = json.dumps(data, indent=2)
+        content = json.dumps(_to_serializable(data), indent=2)
 
     Path(filename).write_text(content, encoding="utf-8")
     if not sarif:
