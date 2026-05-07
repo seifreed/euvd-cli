@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from contextlib import contextmanager
 
 from rich.console import Console
 
@@ -9,102 +8,64 @@ from .models import SearchFilters
 console = Console()
 
 
-@contextmanager
-def _test_client():
-    client = EUVDAPIClient()
-    try:
-        yield client
-    finally:
-        client.close()
-
-
 def _test_endpoint(
     label: str, func: Callable[..., object], *args: object, **kwargs: object
-) -> bool:
+) -> tuple[str, bool]:
     try:
         result = func(*args, **kwargs)
         if isinstance(result, list):
             console.print(f"[green]PASS[/green] {label} ({len(result)} items)")
         else:
             console.print(f"[green]PASS[/green] {label}")
-        return True
+        return label, True
     except Exception as e:
         console.print(f"[red]FAIL[/red] {label}: {e}")
-        return False
+        return label, False
 
 
 def run_self_test() -> bool:
     console.print("Running self-test against official EUVD API endpoints...")
 
-    with _test_client() as client:
-        results: list[tuple[str, bool]] = [
-            (
-                "Latest vulnerabilities",
-                _test_endpoint(
-                    "Latest vulnerabilities", client.get_latest_vulnerabilities
-                ),
+    with EUVDAPIClient() as client:
+        results = [
+            _test_endpoint("Latest vulnerabilities", client.get_latest_vulnerabilities),
+            _test_endpoint(
+                "Critical vulnerabilities", client.get_critical_vulnerabilities
             ),
-            (
-                "Critical vulnerabilities",
-                _test_endpoint(
-                    "Critical vulnerabilities", client.get_critical_vulnerabilities
-                ),
+            _test_endpoint(
+                "Exploited vulnerabilities", client.get_exploited_vulnerabilities
             ),
-            (
-                "Exploited vulnerabilities",
-                _test_endpoint(
-                    "Exploited vulnerabilities", client.get_exploited_vulnerabilities
-                ),
-            ),
-            (
+            _test_endpoint(
                 "ENISA ID search",
-                _test_endpoint(
-                    "ENISA ID search",
-                    client.get_vulnerability_by_enisa_id,
-                    "EUVD-2025-4893",
-                ),
+                client.get_vulnerability_by_enisa_id,
+                "EUVD-2025-4893",
             ),
-            (
+            _test_endpoint(
                 "Advisory ID search",
-                _test_endpoint(
-                    "Advisory ID search",
-                    client.get_advisory_by_id,
-                    "oxas-adv-2024-0002",
-                ),
+                client.get_advisory_by_id,
+                "oxas-adv-2024-0002",
             ),
-            (
+            _test_endpoint(
                 "Advanced search (text)",
-                _test_endpoint(
-                    "Advanced search (text)",
-                    client.search_vulnerabilities,
-                    SearchFilters(text="vulnerability", size=2),
-                ),
+                client.search_vulnerabilities,
+                SearchFilters(text="vulnerability", size=2),
             ),
-            (
+            _test_endpoint(
                 "Advanced search (exploited)",
-                _test_endpoint(
-                    "Advanced search (exploited)",
-                    client.search_vulnerabilities,
-                    SearchFilters(exploited=True, size=2),
-                ),
+                client.search_vulnerabilities,
+                SearchFilters(exploited=True, size=2),
             ),
-            (
+            _test_endpoint(
                 "Advanced search (score filter)",
-                _test_endpoint(
-                    "Advanced search (score filter)",
-                    client.search_vulnerabilities,
-                    SearchFilters(from_score=9.0, size=2),
-                ),
+                client.search_vulnerabilities,
+                SearchFilters(from_score=9.0, size=2),
             ),
-            (
+            _test_endpoint(
                 "Advanced search (date filter)",
-                _test_endpoint(
-                    "Advanced search (date filter)",
-                    client.search_vulnerabilities,
-                    SearchFilters(from_date="2024-01-01", size=2),
-                ),
+                client.search_vulnerabilities,
+                SearchFilters(from_date="2024-01-01", size=2),
             ),
-            ("KEV dump", _test_endpoint("KEV dump", client.get_kev_dump)),
+            _test_endpoint("KEV dump", client.get_kev_dump),
         ]
 
     passed = sum(1 for _, ok in results if ok)

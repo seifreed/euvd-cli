@@ -3,7 +3,6 @@ import json
 import logging
 import sys
 from collections.abc import Callable
-from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, NoReturn
@@ -23,14 +22,10 @@ from .self_test import run_self_test
 
 console = Console()
 
-
-@contextmanager
-def _api_client():
-    client = EUVDAPIClient()
-    try:
-        yield client
-    finally:
-        client.close()
+CVSS_MIN = 0.0
+CVSS_MAX = 10.0
+EPSS_MIN = 0.0
+EPSS_MAX = 100.0
 
 
 def print_banner() -> None:
@@ -62,32 +57,38 @@ def output_data(data: Any, output_format: str) -> None:
         _pretty_print(data)
 
 
-def _is_sarif() -> bool:
-    return (
-        click.get_current_context().find_root().params.get("output_format") == "sarif"
-    )
+def _output_format() -> str:
+    return click.get_current_context().find_root().params.get("output_format", "json")
 
 
 def _fetch_and_output(
     status_message: str,
     fetch_func: Callable[[EUVDAPIClient], Any],
+    output_format: str,
     post_fetch: Callable[[Any], None] | None = None,
 ) -> None:
-    sarif = _is_sarif()
-    if not sarif:
+    is_sarif = output_format == "sarif"
+    if not is_sarif:
         print_banner()
-    with _api_client() as client:
-        if not sarif:
+    with EUVDAPIClient() as client:
+        if not is_sarif:
             console.print(f"[yellow]{status_message}[/yellow]")
         data = fetch_func(client)
-        if post_fetch and not sarif:
+        if post_fetch and not is_sarif:
             post_fetch(data)
-        output_data(data, "sarif" if sarif else "json")
+        output_data(data, output_format)
 
 
 def _exit_with_error(message: str) -> NoReturn:
     console.print(f"[red]{message}[/red]")
     sys.exit(1)
+
+
+def _validate_range(
+    value: float | None, min_val: float, max_val: float, name: str
+) -> None:
+    if value is not None and (value < min_val or value > max_val):
+        _exit_with_error(f"{name} must be between {min_val:.0f} and {max_val:.0f}")
 
 
 def _save_to_file(data: Any, filename: str, sarif: bool) -> None:
@@ -110,7 +111,7 @@ def handle_api_error(func: Callable[..., Any]) -> Callable[..., Any]:
             _exit_with_error(f"HTTP error: {e}")
         except ValidationError as e:
             _exit_with_error(f"Validation error: {e}")
-        except (APIResponseError, ValueError) as e:
+        except APIResponseError as e:
             _exit_with_error(f"Error: {e}")
 
     return wrapper
@@ -137,6 +138,7 @@ def latest():
     _fetch_and_output(
         "Fetching latest vulnerabilities...",
         lambda c: c.get_latest_vulnerabilities(),
+        _output_format(),
     )
 
 
@@ -146,6 +148,7 @@ def critical():
     _fetch_and_output(
         "Fetching critical vulnerabilities...",
         lambda c: c.get_critical_vulnerabilities(),
+        _output_format(),
     )
 
 
@@ -155,6 +158,7 @@ def exploited():
     _fetch_and_output(
         "Fetching exploited vulnerabilities...",
         lambda c: c.get_exploited_vulnerabilities(),
+        _output_format(),
     )
 
 
@@ -165,6 +169,7 @@ def search_enisa(enisa_id: str):
     _fetch_and_output(
         f"Searching for ENISA ID: {enisa_id}...",
         lambda c: c.get_vulnerability_by_enisa_id(enisa_id),
+        _output_format(),
     )
 
 
@@ -175,6 +180,7 @@ def search_advisory(advisory_id: str):
     _fetch_and_output(
         f"Searching for Advisory ID: {advisory_id}...",
         lambda c: c.get_advisory_by_id(advisory_id),
+        _output_format(),
     )
 
 
@@ -210,6 +216,11 @@ def search(
     size: int,
     page: int,
 ):
+    _validate_range(from_score, CVSS_MIN, CVSS_MAX, "from-score")
+    _validate_range(to_score, CVSS_MIN, CVSS_MAX, "to-score")
+    _validate_range(from_epss, EPSS_MIN, EPSS_MAX, "from-epss")
+    _validate_range(to_epss, EPSS_MIN, EPSS_MAX, "to-epss")
+
     filters = SearchFilters(
         text=text,
         vendor=vendor,
@@ -228,6 +239,7 @@ def search(
     _fetch_and_output(
         "Searching vulnerabilities...",
         lambda c: c.search_vulnerabilities(filters),
+        _output_format(),
         post_fetch=lambda data: console.print(
             f"[green]Found {data.total} total vulnerabilities, showing {len(data.items)} results[/green]"
         ),
@@ -237,15 +249,16 @@ def search(
 @cli.command(help="Show vulnerability statistics.")
 @handle_api_error
 def stats():
-    sarif = _is_sarif()
-    if not sarif:
+    fmt = _output_format()
+    is_sarif = fmt == "sarif"
+    if not is_sarif:
         print_banner()
-    with _api_client() as client:
-        if not sarif:
+    with EUVDAPIClient() as client:
+        if not is_sarif:
             console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
         stats_data = client.get_vulnerability_stats()
 
-        if sarif:
+        if is_sarif:
             output_data(stats_data, "sarif")
             return
 
@@ -265,26 +278,26 @@ def stats():
 @click.option("--save", is_flag=True, help="Save as kev_dump_YYYYMMDD_HHMMSS.json")
 @handle_api_error
 def kev_dump(output_path: str | None, save: bool):
-    sarif = _is_sarif()
-    if not sarif:
+    fmt = _output_format()
+    is_sarif = fmt == "sarif"
+    if not is_sarif:
         print_banner()
-    with _api_client() as client:
-        if not sarif:
+    with EUVDAPIClient() as client:
+        if not is_sarif:
             console.print("[yellow]Fetching KEV dump...[/yellow]")
         data = client.get_kev_dump()
-        if not sarif:
+        if not is_sarif:
             console.print(f"[green]{len(data)} KEV entries[/green]")
 
-        output_format = "sarif" if sarif else "json"
         if output_path or save:
             if output_path:
                 filename = output_path
             else:
-                ext = ".sarif.json" if sarif else ".json"
+                ext = ".sarif.json" if is_sarif else ".json"
                 filename = f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
-            _save_to_file(data, filename, sarif)
+            _save_to_file(data, filename, is_sarif)
         else:
-            output_data(data, output_format)
+            output_data(data, fmt)
 
 
 @cli.command(help="Run the self-test suite.")

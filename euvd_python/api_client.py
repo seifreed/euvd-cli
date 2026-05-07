@@ -97,34 +97,8 @@ class EUVDAPIClient:
     def search_vulnerabilities(
         self, filters: SearchFilters
     ) -> VulnerabilityQueryResponse:
-        params: dict[str, str] = {}
-
-        if filters.from_score is not None:
-            params["fromScore"] = str(filters.from_score)
-        if filters.to_score is not None:
-            params["toScore"] = str(filters.to_score)
-        if filters.from_epss is not None:
-            params["fromEpss"] = str(filters.from_epss)
-        if filters.to_epss is not None:
-            params["toEpss"] = str(filters.to_epss)
-        if filters.from_date:
-            params["fromDate"] = filters.from_date
-        if filters.to_date:
-            params["toDate"] = filters.to_date
-        if filters.product:
-            params["product"] = filters.product
-        if filters.vendor:
-            params["vendor"] = filters.vendor
-        if filters.assigner:
-            params["assigner"] = filters.assigner
-        if filters.exploited is not None:
-            params["exploited"] = str(filters.exploited).lower()
-        if filters.text:
-            params["text"] = filters.text
-
-        params["page"] = str(filters.page)
+        params = filters.to_params()
         params["size"] = str(min(filters.size, MAX_PAGE_SIZE))
-
         return self._request("/search", VulnerabilityQueryResponse, params=params)
 
     def get_kev_dump(self) -> list[KevEntry]:
@@ -136,6 +110,13 @@ class EUVDAPIClient:
             critical_count=len(self.get_critical_vulnerabilities()),
             exploited_count=len(self.get_exploited_vulnerabilities()),
         )
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def close(self) -> None:
         self.session.close()
