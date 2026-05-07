@@ -11,6 +11,9 @@ from .models import (
     VulnerabilityBase,
     VulnerabilityCore,
     VulnerabilityQueryResponse,
+    CVSS_CRITICAL_THRESHOLD,
+    CVSS_HIGH_THRESHOLD,
+    CVSS_MEDIUM_THRESHOLD,
 )
 
 SARIF_VERSION = "2.1.0"
@@ -22,13 +25,10 @@ TOOL_NAME = "EUVD CLI"
 TOOL_VERSION = __version__
 TOOL_URI = "https://euvd.enisa.europa.eu"
 
-CVSS_CRITICAL_THRESHOLD = 9.0
-CVSS_HIGH_THRESHOLD = 7.0
-CVSS_MEDIUM_THRESHOLD = 4.0
 EPSS_PERCENT_FACTOR = 100
 
 
-def _score_to_level(base_score: float | None) -> str:
+def _cvss_to_sarif_level(base_score: float | None) -> str:
     if base_score is None:
         return "none"
     if base_score >= CVSS_CRITICAL_THRESHOLD:
@@ -65,7 +65,7 @@ def _build_vendors(
     return [{"id": v.id, "name": v.vendor.name} for v in vendors]
 
 
-def _optional_fields(fields: dict[str, Any]) -> dict[str, Any]:
+def _strip_falsy(fields: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in fields.items() if v is not None and v is not False}
 
 
@@ -74,7 +74,7 @@ def _build_common_properties(
 ) -> dict[str, Any]:
     products = _build_products(vuln.enisaIdProduct)
     vendors = _build_vendors(vuln.enisaIdVendor)
-    return _optional_fields(
+    return _strip_falsy(
         {
             "baseScore": vuln.baseScore,
             "aliases": vuln.aliases,
@@ -95,7 +95,7 @@ def _build_vulnerability_result(
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ruleId": vuln.id,
-        "level": _score_to_level(vuln.baseScore),
+        "level": _cvss_to_sarif_level(vuln.baseScore),
         "kind": "fail",
         "message": {"text": vuln.description or vuln.id},
     }
@@ -134,7 +134,7 @@ def enisa_vulnerability_to_result(vuln: ENISAVulnerabilityByID) -> dict[str, Any
 def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ruleId": advisory.description or "unknown-advisory",
-        "level": _score_to_level(advisory.baseScore),
+        "level": _cvss_to_sarif_level(advisory.baseScore),
         "kind": "review",
         "message": {"text": advisory.description or "Advisory lookup"},
     }
@@ -145,7 +145,7 @@ def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
         if advisory.enisaIdAdvisories
         else None
     )
-    properties = _optional_fields(
+    properties = _strip_falsy(
         {
             "baseScore": advisory.baseScore,
             "aliases": advisory.aliases,
@@ -173,7 +173,7 @@ def kev_entry_to_result(entry: KevEntry) -> dict[str, Any]:
         "fingerprints": {"euvdId/v1": entry.euvdId},
     }
 
-    properties = _optional_fields(
+    properties = _strip_falsy(
         {
             "euvdId": entry.euvdId,
             "dateAdded": entry.dateAdded,

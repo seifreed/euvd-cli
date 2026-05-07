@@ -4,12 +4,14 @@ from typing import Any
 
 import click
 from pydantic import BaseModel
-from rich.console import Console
 from rich.json import JSON
 
+from .console import console
 from .sarif import to_sarif_json
 
-console = Console()
+
+def _print_raw(text: str) -> None:
+    click.echo(text)
 
 
 def to_serializable(data: Any) -> Any:
@@ -28,7 +30,7 @@ def format_data(data: Any, output_format: str) -> str:
 
 def print_data(data: Any, output_format: str) -> None:
     if output_format == "sarif":
-        click.echo(format_data(data, output_format))
+        _print_raw(format_data(data, output_format))
     else:
         console.print(JSON.from_data(to_serializable(data)))
 

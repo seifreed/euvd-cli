@@ -59,7 +59,7 @@ class RateLimiter:
 
     def wait_if_needed(self) -> None:
         current_time = time.time()
-        time_since_last = current_time - self.last_request
+        time_since_last = max(0.0, current_time - self.last_request)
 
         if time_since_last < self.interval:
             sleep_time = self.interval - time_since_last
@@ -84,7 +84,7 @@ class EUVDAPIClient:
         self.rate_limiter = RateLimiter()
         self.session.headers.update({"User-Agent": f"EUVD-Python-CLI/{__version__}"})
 
-    def _fetch(
+    def _get_json(
         self, endpoint: str, params: dict[str, str] | None = None
     ) -> dict | list:
         self.rate_limiter.wait_if_needed()
@@ -93,43 +93,43 @@ class EUVDAPIClient:
         response.raise_for_status()
         return response.json()
 
-    def _request(
+    def _get_model(
         self, endpoint: str, model_class: Type[T], params: dict[str, str] | None = None
     ) -> T:
-        data = self._fetch(endpoint, params=params)
+        data = self._get_json(endpoint, params=params)
         return model_class.model_validate(data)
 
-    def _request_list(self, endpoint: str, model_class: Type[T]) -> list[T]:
-        data = self._fetch(endpoint)
+    def _get_model_list(self, endpoint: str, model_class: Type[T]) -> list[T]:
+        data = self._get_json(endpoint)
         if not isinstance(data, list):
             raise APIResponseError(f"Expected list response, got {type(data)}")
         return [model_class.model_validate(item) for item in data]
 
     def get_latest_vulnerabilities(self) -> list[LatestVulnerability]:
-        return self._request_list("/lastvulnerabilities", LatestVulnerability)
+        return self._get_model_list("/lastvulnerabilities", LatestVulnerability)
 
     def get_exploited_vulnerabilities(self) -> list[ExploitedVulnerability]:
-        return self._request_list("/exploitedvulnerabilities", ExploitedVulnerability)
+        return self._get_model_list("/exploitedvulnerabilities", ExploitedVulnerability)
 
     def get_critical_vulnerabilities(self) -> list[CriticalVulnerability]:
-        return self._request_list("/criticalvulnerabilities", CriticalVulnerability)
+        return self._get_model_list("/criticalvulnerabilities", CriticalVulnerability)
 
     def get_vulnerability_by_enisa_id(self, enisa_id: str) -> ENISAVulnerabilityByID:
-        return self._request(
+        return self._get_model(
             "/enisaid", ENISAVulnerabilityByID, params={"id": enisa_id}
         )
 
     def get_advisory_by_id(self, advisory_id: str) -> AdvisoryByID:
-        return self._request("/advisory", AdvisoryByID, params={"id": advisory_id})
+        return self._get_model("/advisory", AdvisoryByID, params={"id": advisory_id})
 
     def search_vulnerabilities(
         self, filters: SearchFilters
     ) -> VulnerabilityQueryResponse:
         params = _build_search_params(filters)
-        return self._request("/search", VulnerabilityQueryResponse, params=params)
+        return self._get_model("/search", VulnerabilityQueryResponse, params=params)
 
     def get_kev_dump(self) -> list[KevEntry]:
-        return self._request_list("/kev/dump", KevEntry)
+        return self._get_model_list("/kev/dump", KevEntry)
 
     def get_vulnerability_stats(self) -> VulnerabilityStats:
         return VulnerabilityStats(

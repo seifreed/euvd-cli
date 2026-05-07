@@ -1,5 +1,9 @@
 from pydantic import BaseModel
 
+CVSS_CRITICAL_THRESHOLD = 9.0
+CVSS_HIGH_THRESHOLD = 7.0
+CVSS_MEDIUM_THRESHOLD = 4.0
+
 
 class ProductName(BaseModel):
     name: str
@@ -76,7 +80,7 @@ class VulnerabilityByID(BaseModel):
     datePublished: str | None = None
     dateUpdated: str | None = None
     description: str | None = None
-    enisa_id: str | None = None
+    enisaId: str | None = None
     epss: float | None = None
     id: str
     references: str | None = None

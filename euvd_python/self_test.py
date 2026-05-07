@@ -2,12 +2,10 @@ from collections.abc import Callable
 
 import requests.exceptions
 from pydantic import ValidationError
-from rich.console import Console
 
 from .api_client import APIResponseError, EUVDAPIClient
+from .console import console
 from .models import SearchFilters
-
-console = Console()
 
 _TEST_ENISA_ID = "EUVD-2025-4893"
 _TEST_ADVISORY_ID = "oxas-adv-2024-0002"

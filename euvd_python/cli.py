@@ -8,16 +8,14 @@ from typing import Any, NoReturn
 import click
 import requests.exceptions
 from pydantic import ValidationError
-from rich.console import Console
 from rich.table import Table
 
 from .api_client import APIResponseError, EUVDAPIClient
 from . import __version__
+from .console import console
 from .models import SearchFilters
 from .output import print_data, save_data
 from .self_test import run_self_test
-
-console = Console()
 
 CVSS_MIN = 0.0
 CVSS_MAX = 10.0
@@ -45,6 +43,7 @@ def _fetch_and_output(
     output_format: str,
     post_fetch: Callable[[Any], None] | None = None,
     renderer: Callable[[Any], None] | None = None,
+    save_path: str | None = None,
 ) -> None:
     is_sarif = output_format == "sarif"
     if not is_sarif:
@@ -55,10 +54,15 @@ def _fetch_and_output(
         data = fetch_func(client)
         if post_fetch and not is_sarif:
             post_fetch(data)
-        if renderer and not is_sarif:
-            renderer(data)
-        else:
-            print_data(data, output_format)
+
+    if save_path:
+        save_data(data, output_format, save_path)
+        if not is_sarif:
+            console.print(f"[green]Saved to {save_path}[/green]")
+    elif renderer and not is_sarif:
+        renderer(data)
+    else:
+        print_data(data, output_format)
 
 
 def _exit_with_error(message: str) -> NoReturn:
@@ -249,31 +253,27 @@ def stats():
 def kev_dump(output_path: str | None, save: bool):
     fmt = _output_format()
     is_sarif = fmt == "sarif"
-    should_save = output_path or save
-
-    if not is_sarif:
-        print_banner()
-    with EUVDAPIClient() as client:
-        if not is_sarif:
-            console.print("[yellow]Fetching KEV dump...[/yellow]")
-        data = client.get_kev_dump()
-
-    if should_save:
-        ext = ".sarif.json" if is_sarif else ".json"
-        filename = (
+    ext = ".sarif.json" if is_sarif else ".json"
+    save_path: str | None = None
+    if output_path or save:
+        save_path = (
             output_path or f"kev_dump_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
         )
-        save_data(data, fmt, filename)
-        if not is_sarif:
-            console.print(f"[green]Saved to {filename}[/green]")
-    else:
-        if not is_sarif:
-            console.print(f"[green]{len(data)} KEV entries[/green]")
-        print_data(data, fmt)
+
+    _fetch_and_output(
+        "Fetching KEV dump...",
+        lambda c: c.get_kev_dump(),
+        fmt,
+        post_fetch=(
+            None
+            if save_path
+            else lambda data: console.print(f"[green]{len(data)} KEV entries[/green]")
+        ),
+        save_path=save_path,
+    )
 
 
 @cli.command(help="Run the self-test suite.")
-@handle_api_error
 def selftest():
     print_banner()
     if not run_self_test():
