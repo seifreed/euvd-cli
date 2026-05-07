@@ -1,8 +1,9 @@
 import time
 import logging
 import requests
+import requests.exceptions
 from typing import TypeVar, Type
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from .models import (
     LatestVulnerability,
@@ -13,7 +14,6 @@ from .models import (
     VulnerabilityQueryResponse,
     KevEntry,
     SearchFilters,
-    VulnerabilityStats,
 )
 from . import __version__
 
@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 RATE_LIMIT_INTERVAL = 6.0
 MAX_PAGE_SIZE = 100
-
 
 _PARAM_ALIASES = {
     "from_score": "fromScore",
@@ -50,6 +49,9 @@ def _build_search_params(filters: SearchFilters) -> dict[str, str]:
 
 class APIResponseError(Exception):
     pass
+
+
+API_ERRORS = (requests.RequestException, ValidationError, APIResponseError)
 
 
 class RateLimiter:
@@ -130,13 +132,6 @@ class EUVDAPIClient:
 
     def get_kev_dump(self) -> list[KevEntry]:
         return self._get_model_list("/kev/dump", KevEntry)
-
-    def get_vulnerability_stats(self) -> VulnerabilityStats:
-        return VulnerabilityStats(
-            latest_count=len(self.get_latest_vulnerabilities()),
-            critical_count=len(self.get_critical_vulnerabilities()),
-            exploited_count=len(self.get_exploited_vulnerabilities()),
-        )
 
     def __enter__(self):
         return self

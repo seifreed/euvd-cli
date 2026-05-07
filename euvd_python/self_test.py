@@ -1,9 +1,6 @@
 from collections.abc import Callable
 
-import requests.exceptions
-from pydantic import ValidationError
-
-from .api_client import APIResponseError, EUVDAPIClient
+from .api_client import API_ERRORS, EUVDAPIClient
 from .console import console
 from .models import SearchFilters
 
@@ -21,7 +18,7 @@ def _test_endpoint(
         else:
             console.print(f"[green]PASS[/green] {label}")
         return label, True
-    except (requests.RequestException, ValidationError, APIResponseError) as e:
+    except API_ERRORS as e:
         console.print(f"[red]FAIL[/red] {label}: {e}")
         return label, False
 

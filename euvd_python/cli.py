@@ -6,12 +6,10 @@ from datetime import datetime
 from typing import Any, NoReturn
 
 import click
-import requests.exceptions
-from pydantic import ValidationError
-from .api_client import APIResponseError, EUVDAPIClient
+from .api_client import API_ERRORS, EUVDAPIClient
 from . import __version__
 from .console import console
-from .models import SearchFilters
+from .models import SearchFilters, VulnerabilityStats
 from .output import print_data, render_stats, save_data
 from .self_test import run_self_test
 
@@ -80,12 +78,8 @@ def handle_api_error(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except requests.RequestException as e:
-            _exit_with_error(f"HTTP error: {e}")
-        except ValidationError as e:
-            _exit_with_error(f"Validation error: {e}")
-        except APIResponseError as e:
-            _exit_with_error(f"Error: {e}")
+        except API_ERRORS as e:
+            _exit_with_error(f"{type(e).__name__}: {e}")
 
     return wrapper
 
@@ -224,12 +218,21 @@ def search(
 def stats():
     if _output_format() == "sarif":
         _exit_with_error("SARIF format is not supported for statistics")
-    _fetch_and_output(
-        "Fetching vulnerability statistics...",
-        lambda c: c.get_vulnerability_stats(),
-        _output_format(),
-        renderer=render_stats,
+    fmt = _output_format()
+    if not fmt == "sarif":
+        print_banner()
+    with EUVDAPIClient() as client:
+        latest = client.get_latest_vulnerabilities()
+        critical = client.get_critical_vulnerabilities()
+        exploited = client.get_exploited_vulnerabilities()
+        if not fmt == "sarif":
+            console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
+    stats_data = VulnerabilityStats(
+        latest_count=len(latest),
+        critical_count=len(critical),
+        exploited_count=len(exploited),
     )
+    render_stats(stats_data)
 
 
 @cli.command(help="Download KEV dump.")

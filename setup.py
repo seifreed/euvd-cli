@@ -1,3 +1,4 @@
+import re
 from setuptools import setup, find_packages
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -6,9 +7,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
 with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
+with open("euvd_python/__init__.py", "r") as fh:
+    version_match = re.search(r'^__version__\s*=\s*["\']([^"\']+)', fh.read(), re.MULTILINE)
+    version = version_match.group(1) if version_match else "0.0.0"
+
 setup(
     name="euvd-python-cli",
-    version="1.0.0",
+    version=version,
     author="Marc Rivero Lopez",
     author_email="mriverolopez@gmail.com",
     description="A Python CLI tool for querying the ENISA EU Vulnerability Database (EUVD) API",

@@ -65,7 +65,7 @@ def _build_vendors(
     return [{"id": v.id, "name": v.vendor.name} for v in vendors]
 
 
-def _strip_falsy(fields: dict[str, Any]) -> dict[str, Any]:
+def _strip_none_and_false(fields: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in fields.items() if v is not None and v is not False}
 
 
@@ -74,7 +74,7 @@ def _build_common_properties(
 ) -> dict[str, Any]:
     products = _build_products(vuln.enisa_id_product)
     vendors = _build_vendors(vuln.enisa_id_vendor)
-    return _strip_falsy(
+    return _strip_none_and_false(
         {
             "baseScore": vuln.base_score,
             "aliases": vuln.aliases,
@@ -145,7 +145,7 @@ def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
         if advisory.enisa_id_advisories
         else None
     )
-    properties = _strip_falsy(
+    properties = _strip_none_and_false(
         {
             "baseScore": advisory.base_score,
             "aliases": advisory.aliases,
@@ -173,7 +173,7 @@ def kev_entry_to_result(entry: KevEntry) -> dict[str, Any]:
         "fingerprints": {"euvdId/v1": entry.euvd_id},
     }
 
-    properties = _strip_falsy(
+    properties = _strip_none_and_false(
         {
             "euvdId": entry.euvd_id,
             "dateAdded": entry.date_added,

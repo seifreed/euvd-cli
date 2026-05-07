@@ -1,8 +1,8 @@
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
-import click
 from pydantic import BaseModel
 from rich.json import JSON
 from rich.table import Table
@@ -10,10 +10,6 @@ from rich.table import Table
 from .console import console
 from .models import VulnerabilityStats
 from .sarif import to_sarif_json
-
-
-def _print_raw(text: str) -> None:
-    click.echo(text)
 
 
 def to_serializable(data: Any) -> Any:
@@ -32,7 +28,7 @@ def format_data(data: Any, output_format: str) -> str:
 
 def print_data(data: Any, output_format: str) -> None:
     if output_format == "sarif":
-        _print_raw(format_data(data, output_format))
+        sys.stdout.write(format_data(data, output_format) + "\n")
     else:
         console.print(JSON.from_data(to_serializable(data)))
 

@@ -63,12 +63,12 @@ class ExploitedVulnerability(VulnerabilityBase):
     pass
 
 
-class VulnerabilityItem(VulnerabilityBase):
+class SearchResultVulnerability(VulnerabilityBase):
     pass
 
 
 class VulnerabilityQueryResponse(BaseModel):
-    items: list[VulnerabilityItem]
+    items: list[SearchResultVulnerability]
     total: int
 
 
