@@ -131,9 +131,17 @@ def enisa_vulnerability_to_result(vuln: ENISAVulnerabilityByID) -> dict[str, Any
     return _build_vulnerability_result(vuln)
 
 
+def _advisory_rule_id(advisory: AdvisoryByID) -> str:
+    if advisory.advisory_id:
+        return advisory.advisory_id
+    if advisory.enisa_id_advisories:
+        return advisory.enisa_id_advisories[0].id
+    return "unknown-advisory"
+
+
 def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
     result: dict[str, Any] = {
-        "ruleId": advisory.description or "unknown-advisory",
+        "ruleId": _advisory_rule_id(advisory),
         "level": _cvss_to_sarif_level(advisory.base_score),
         "kind": "review",
         "message": {"text": advisory.description or "Advisory lookup"},
@@ -193,13 +201,14 @@ def build_sarif_log(
     results: list[dict[str, Any]],
     run_properties: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    unique_rule_ids = list(dict.fromkeys(r["ruleId"] for r in results))
     run: dict[str, Any] = {
         "tool": {
             "driver": {
                 "name": TOOL_NAME,
                 "version": TOOL_VERSION,
                 "informationUri": TOOL_URI,
-                "rules": [{"id": r["ruleId"]} for r in results],
+                "rules": [{"id": rid} for rid in unique_rule_ids],
             }
         },
         "results": results,

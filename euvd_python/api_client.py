@@ -122,7 +122,11 @@ class EUVDAPIClient:
         )
 
     def get_advisory_by_id(self, advisory_id: str) -> AdvisoryByID:
-        return self._get_model("/advisory", AdvisoryByID, params={"id": advisory_id})
+        advisory = self._get_model(
+            "/advisory", AdvisoryByID, params={"id": advisory_id}
+        )
+        advisory.advisory_id = advisory_id
+        return advisory
 
     def search_vulnerabilities(
         self, filters: SearchFilters

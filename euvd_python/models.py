@@ -132,6 +132,8 @@ class ENISAAdvisoryWrapper(BaseModel):
 class AdvisoryByID(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    # Populated client-side from the request; the API response does not echo it back.
+    advisory_id: str | None = None
     advisory_product: list[EnisaProductInfo] | None = Field(
         alias="advisoryProduct", default=None
     )
