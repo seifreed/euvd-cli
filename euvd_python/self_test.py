@@ -268,6 +268,57 @@ def _assert_date_validator_strict_padding() -> None:
         )
 
 
+def _assert_keyboard_interrupt_exits_130() -> None:
+    from . import main as main_module
+
+    original_cli = main_module.cli
+
+    def _raise_keyboard_interrupt() -> None:
+        raise KeyboardInterrupt
+
+    setattr(main_module, "cli", _raise_keyboard_interrupt)
+    try:
+        try:
+            main_module.main()
+        except SystemExit as exc:
+            if exc.code != 130:
+                raise AssertionError(
+                    f"expected exit 130 on KeyboardInterrupt, got {exc.code}"
+                )
+            return
+        raise AssertionError("main() did not exit on KeyboardInterrupt")
+    finally:
+        setattr(main_module, "cli", original_cli)
+
+
+def _assert_nested_validation_loc_formatted() -> None:
+    from pydantic import BaseModel, ValidationError
+
+    from .cli import _format_validation_error
+
+    class _Inner(BaseModel):
+        x: int
+
+    class _Outer(BaseModel):
+        inner: _Inner
+
+    try:
+        _Outer.model_validate({"inner": {"x": "not-int"}})
+    except ValidationError as err:
+        formatted = _format_validation_error(err)
+    else:
+        raise AssertionError("expected ValidationError for nested model")
+
+    if "inner.x" not in formatted:
+        raise AssertionError(
+            f"nested loc not rendered as dotted path; got {formatted!r}"
+        )
+    if "--inner" in formatted:
+        raise AssertionError(
+            f"nested loc must not be prefixed with --; got {formatted!r}"
+        )
+
+
 def _assert_unknown_wire_fields_preserved() -> None:
     from .models import LatestVulnerability
 
@@ -569,6 +620,20 @@ def run_self_test() -> bool:
         _check(
             "Unknown wire fields preserved in model_dump",
             _assert_unknown_wire_fields_preserved,
+        )
+    )
+
+    results.append(
+        _check(
+            "Nested validation error rendered as dotted path",
+            _assert_nested_validation_loc_formatted,
+        )
+    )
+
+    results.append(
+        _check(
+            "KeyboardInterrupt exits 130 silently",
+            _assert_keyboard_interrupt_exits_130,
         )
     )
 

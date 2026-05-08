@@ -25,15 +25,19 @@ _HANDLED_ERRORS = API_ERRORS + (SARIFConversionError, OSError)
 
 
 def _format_validation_error(err: ValidationError) -> str:
-    # Loc paths from SearchFilters always correspond to CLI flags; render them
-    # as --kebab-case so users see the exact flag they typed.
+    # Single-element loc paths from SearchFilters correspond directly to CLI
+    # flags, so render them as --kebab-case. Multi-element loc paths (nested
+    # field validation) are not flags; render them as a dotted path so the
+    # message still pinpoints the offending field.
     lines = []
     for item in err.errors():
         loc_parts = [str(part) for part in item["loc"]]
-        if loc_parts:
+        if not loc_parts:
+            loc = "<root>"
+        elif len(loc_parts) == 1:
             loc = "--" + loc_parts[0].replace("_", "-")
         else:
-            loc = "<root>"
+            loc = ".".join(loc_parts)
         lines.append(f"  {loc}: {item['msg']}")
     return "Invalid input:\n" + "\n".join(lines)
 

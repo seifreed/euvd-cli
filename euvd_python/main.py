@@ -1,5 +1,6 @@
 import logging
 import signal
+import sys
 
 from .cli import cli
 
@@ -14,4 +15,8 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    cli()
+    try:
+        cli()
+    except KeyboardInterrupt:
+        # Convention: 128 + SIGINT (2) = 130; silent exit, no traceback.
+        sys.exit(130)
