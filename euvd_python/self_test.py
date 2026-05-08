@@ -1,5 +1,7 @@
+import io
 import json
 from collections.abc import Callable
+from contextlib import redirect_stderr, redirect_stdout
 from typing import Any
 
 from .api_client import API_ERRORS, EUVDAPIClient
@@ -64,6 +66,48 @@ def _assert_sarif_unsupported_raises() -> None:
     except SARIFConversionError:
         return
     raise AssertionError("expected SARIFConversionError for unsupported type")
+
+
+def _assert_banner_to_stderr() -> None:
+    from .cli import print_banner
+
+    out_buf, err_buf = io.StringIO(), io.StringIO()
+    with redirect_stdout(out_buf), redirect_stderr(err_buf):
+        print_banner()
+    if "EUVD Python CLI" in out_buf.getvalue():
+        raise AssertionError("banner leaked to stdout; breaks JSON piping")
+    if "EUVD Python CLI" not in err_buf.getvalue():
+        raise AssertionError(f"banner missing from stderr; got {err_buf.getvalue()!r}")
+
+
+def _assert_error_to_stderr() -> None:
+    from .cli import _exit_with_error
+
+    out_buf, err_buf = io.StringIO(), io.StringIO()
+    marker = "regression_marker_xyz"
+    with redirect_stdout(out_buf), redirect_stderr(err_buf):
+        try:
+            _exit_with_error(marker)
+        except SystemExit:
+            pass
+    if marker in out_buf.getvalue():
+        raise AssertionError("error message leaked to stdout")
+    if marker not in err_buf.getvalue():
+        raise AssertionError(
+            f"error message missing from stderr; got {err_buf.getvalue()!r}"
+        )
+
+
+def _assert_print_data_clean_stdout() -> None:
+    from .output import print_data
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        print_data({"hello": "world", "n": 1}, "json")
+    out = buf.getvalue()
+    if "\x1b[" in out:
+        raise AssertionError("ANSI escape detected in JSON stdout output")
+    json.loads(out)
 
 
 def _assert_advisory_wire_id(advisory: AdvisoryByID, requested_id: str) -> None:
@@ -195,6 +239,27 @@ def run_self_test() -> bool:
         _check(
             "SARIF unsupported type raises SARIFConversionError",
             _assert_sarif_unsupported_raises,
+        )
+    )
+
+    results.append(
+        _check(
+            "Banner routes to stderr (preserves stdout for piping)",
+            _assert_banner_to_stderr,
+        )
+    )
+
+    results.append(
+        _check(
+            "Error messages route to stderr",
+            _assert_error_to_stderr,
+        )
+    )
+
+    results.append(
+        _check(
+            "JSON stdout is clean (no ANSI escapes)",
+            _assert_print_data_clean_stdout,
         )
     )
 

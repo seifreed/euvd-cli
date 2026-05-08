@@ -8,7 +8,7 @@ from typing import Any, NoReturn
 import click
 from .api_client import API_ERRORS, EUVDAPIClient
 from . import __version__
-from .console import console
+from .console import err_console
 from .models import SearchFilters, VulnerabilityStats
 from .output import print_data, render_stats, save_data
 from .sarif import SARIFConversionError
@@ -23,13 +23,15 @@ EPSS_MAX = 100.0
 
 
 def print_banner() -> None:
-    console.print()
-    console.print(f"[bold cyan]EUVD Python CLI v{__version__}[/bold cyan]")
-    console.print("[dim]ENISA EU Vulnerability Database Command Line Interface[/dim]")
-    console.print(
+    err_console.print()
+    err_console.print(f"[bold cyan]EUVD Python CLI v{__version__}[/bold cyan]")
+    err_console.print(
+        "[dim]ENISA EU Vulnerability Database Command Line Interface[/dim]"
+    )
+    err_console.print(
         "[dim]Marc Rivero Lopez | API: https://euvd.enisa.europa.eu/apidoc[/dim]"
     )
-    console.print()
+    err_console.print()
 
 
 def _output_format() -> str:
@@ -49,7 +51,7 @@ def _fetch_and_output(
         print_banner()
     with EUVDAPIClient() as client:
         if not is_sarif:
-            console.print(f"[yellow]{status_message}[/yellow]")
+            err_console.print(f"[yellow]{status_message}[/yellow]")
         data = fetch_func(client)
         if post_fetch and not is_sarif:
             post_fetch(data)
@@ -57,7 +59,7 @@ def _fetch_and_output(
     if save_path:
         save_data(data, output_format, save_path)
         if not is_sarif:
-            console.print(f"[green]Saved to {save_path}[/green]")
+            err_console.print(f"[green]Saved to {save_path}[/green]")
     elif renderer and not is_sarif:
         renderer(data)
     else:
@@ -65,7 +67,7 @@ def _fetch_and_output(
 
 
 def _exit_with_error(message: str) -> NoReturn:
-    console.print(f"[red]{message}[/red]")
+    err_console.print(f"[red]{message}[/red]")
     sys.exit(1)
 
 
@@ -210,7 +212,7 @@ def search(
         "Searching vulnerabilities...",
         lambda c: c.search_vulnerabilities(filters),
         _output_format(),
-        post_fetch=lambda data: console.print(
+        post_fetch=lambda data: err_console.print(
             f"[green]Found {data.total} total vulnerabilities, showing {len(data.items)} results[/green]"
         ),
     )
@@ -222,7 +224,7 @@ def stats():
     if _output_format() == "sarif":
         _exit_with_error("SARIF format is not supported for statistics")
     print_banner()
-    console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
+    err_console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
     with EUVDAPIClient() as client:
         latest = client.get_latest_vulnerabilities()
         critical = client.get_critical_vulnerabilities()
@@ -257,7 +259,9 @@ def kev_dump(output_path: str | None, save: bool):
         post_fetch=(
             None
             if save_path
-            else lambda data: console.print(f"[green]{len(data)} KEV entries[/green]")
+            else lambda data: err_console.print(
+                f"[green]{len(data)} KEV entries[/green]"
+            )
         ),
         save_path=save_path,
     )

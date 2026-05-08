@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
-from rich.json import JSON
 from rich.table import Table
 
 from .console import console
@@ -27,10 +26,7 @@ def format_data(data: Any, output_format: str) -> str:
 
 
 def print_data(data: Any, output_format: str) -> None:
-    if output_format == "sarif":
-        sys.stdout.write(format_data(data, output_format) + "\n")
-    else:
-        console.print(JSON.from_data(to_serializable(data)))
+    sys.stdout.write(format_data(data, output_format) + "\n")
 
 
 def save_data(data: Any, output_format: str, filename: str) -> None:
