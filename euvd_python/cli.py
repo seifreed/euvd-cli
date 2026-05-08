@@ -17,7 +17,11 @@ from .output import print_data, render_stats, save_data
 from .sarif import SARIFConversionError
 from .self_test import run_self_test
 
-_HANDLED_ERRORS = API_ERRORS + (SARIFConversionError,)
+# OSError covers filesystem failures during save (FileNotFoundError,
+# PermissionError, IsADirectoryError, disk full) and BrokenPipeError when
+# stdout's reader closes. Network OSErrors are wrapped by requests into
+# RequestException so they go through API_ERRORS, not this catch.
+_HANDLED_ERRORS = API_ERRORS + (SARIFConversionError, OSError)
 
 
 def _format_validation_error(err: ValidationError) -> str:
@@ -35,7 +39,10 @@ def _format_validation_error(err: ValidationError) -> str:
 
 
 def _save_with_overwrite_warning(data: Any, output_format: str, path: str) -> None:
-    if Path(path).exists():
+    # is_file() only matches regular files; directories or missing paths do
+    # not warrant an overwrite warning (save_data will surface its own OSError
+    # if the path is unwritable).
+    if Path(path).is_file():
         err_console.print(f"[yellow]Warning: overwriting existing file {path}[/yellow]")
     save_data(data, output_format, path)
 

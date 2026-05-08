@@ -256,6 +256,30 @@ def _assert_date_validator_strict_padding() -> None:
         )
 
 
+def _assert_oserror_handled_cleanly() -> None:
+    from .cli import handle_cli_error
+
+    @handle_cli_error
+    def fail_with_oserror() -> None:
+        raise FileNotFoundError(2, "No such file or directory", "bogus/path.json")
+
+    err_buf = io.StringIO()
+    raised: SystemExit | None = None
+    with redirect_stderr(err_buf):
+        try:
+            fail_with_oserror()
+        except SystemExit as exc:
+            raised = exc
+    if raised is None:
+        raise AssertionError("handle_cli_error did not exit on OSError")
+    if raised.code != 1:
+        raise AssertionError(f"expected exit 1, got {raised.code}")
+    if "FileNotFoundError" not in err_buf.getvalue():
+        raise AssertionError(
+            f"expected error name in stderr; got: {err_buf.getvalue()!r}"
+        )
+
+
 def _assert_save_warning_on_overwrite() -> None:
     import tempfile
 
@@ -499,6 +523,13 @@ def run_self_test() -> bool:
         _check(
             "save warns when overwriting existing file",
             _assert_save_warning_on_overwrite,
+        )
+    )
+
+    results.append(
+        _check(
+            "OSError handled cleanly (no traceback)",
+            _assert_oserror_handled_cleanly,
         )
     )
 
