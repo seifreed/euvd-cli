@@ -32,6 +32,13 @@ python euvd-cli.py selftest
 
 Search params: `--text`, `--vendor`, `--product`, `--assigner`, `--from-score`, `--to-score`, `--from-epss`, `--to-epss`, `--from-date`, `--to-date`, `--exploited/--not-exploited`, `--size` (max 100), `--page`.
 
+Output format (group-level flag, before the subcommand): `--format json` (default) or `--format sarif`.
+
+```bash
+python euvd-cli.py --format sarif latest
+python euvd-cli.py --format sarif search-advisory oxas-adv-2024-0002
+```
+
 Note: vendor, product, CVSS score filters may return 403 from the API.
 
 ## API
