@@ -89,7 +89,10 @@ def handle_cli_error(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-@click.group(help="EUVD CLI tool for vulnerability lookup.")
+@click.group(
+    help="EUVD CLI tool for vulnerability lookup.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option(
     "--format",
@@ -98,13 +101,12 @@ def handle_cli_error(func: Callable[..., Any]) -> Callable[..., Any]:
     default="json",
     help="Output format",
 )
-@click.help_option("-h", "--help")
 def cli(verbose: bool, output_format: str) -> None:
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
 
-@cli.command()
+@cli.command(help="Show latest vulnerabilities.")
 @handle_cli_error
 def latest() -> None:
     _fetch_and_output(
@@ -114,7 +116,7 @@ def latest() -> None:
     )
 
 
-@cli.command()
+@cli.command(help="Show critical vulnerabilities.")
 @handle_cli_error
 def critical() -> None:
     _fetch_and_output(
@@ -124,7 +126,7 @@ def critical() -> None:
     )
 
 
-@cli.command()
+@cli.command(help="Show exploited vulnerabilities.")
 @handle_cli_error
 def exploited() -> None:
     _fetch_and_output(

@@ -46,4 +46,4 @@ setup(
         "Source": "https://github.com/seifreed/euvd-cli",
         "Documentation": "https://github.com/seifreed/euvd-cli#readme",
     },
-) 
+)

@@ -110,6 +110,22 @@ def _assert_print_data_clean_stdout() -> None:
     json.loads(out)
 
 
+def _assert_subcommand_short_help_flag() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(cli_group, ["latest", "-h"])
+    if result.exit_code != 0:
+        raise AssertionError(
+            f"latest -h failed (exit={result.exit_code}); -h must propagate to subcommands"
+        )
+    if "Show latest vulnerabilities" not in result.output:
+        raise AssertionError(
+            f"subcommand help missing description; got: {result.output!r}"
+        )
+
+
 def _assert_advisory_wire_id(advisory: AdvisoryByID, requested_id: str) -> None:
     if advisory.id != requested_id:
         raise AssertionError(
@@ -260,6 +276,13 @@ def run_self_test() -> bool:
         _check(
             "JSON stdout is clean (no ANSI escapes)",
             _assert_print_data_clean_stdout,
+        )
+    )
+
+    results.append(
+        _check(
+            "-h works on subcommand and shows description",
+            _assert_subcommand_short_help_flag,
         )
     )
 
