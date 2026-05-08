@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Self
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CVSS_CRITICAL_THRESHOLD = 9.0
 CVSS_HIGH_THRESHOLD = 7.0
@@ -182,8 +184,24 @@ class SearchFilters(BaseModel):
     assigner: str | None = None
     exploited: bool | None = None
     text: str | None = None
-    page: int = 0
-    size: int = 10
+    page: int = Field(default=0, ge=0)
+    size: int = Field(default=10, ge=1)
+
+    @model_validator(mode="after")
+    def _check_range_pairs(self) -> Self:
+        if (
+            self.from_score is not None
+            and self.to_score is not None
+            and self.from_score > self.to_score
+        ):
+            raise ValueError("from_score must be <= to_score")
+        if (
+            self.from_epss is not None
+            and self.to_epss is not None
+            and self.from_epss > self.to_epss
+        ):
+            raise ValueError("from_epss must be <= to_epss")
+        return self
 
 
 class VulnerabilityStats(BaseModel):

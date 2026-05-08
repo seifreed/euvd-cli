@@ -126,6 +126,43 @@ def _assert_subcommand_short_help_flag() -> None:
         )
 
 
+def _assert_sarif_rank_not_scaled() -> None:
+    from .models import LatestVulnerability
+
+    vuln = LatestVulnerability(id="EPSS-RANK-TEST", epss=64.28)
+    sarif = json.loads(to_sarif_json(vuln))
+    rank = sarif["runs"][0]["results"][0].get("rank")
+    if rank != 64.28:
+        raise AssertionError(
+            f"SARIF rank should equal epss without scaling; got {rank}"
+        )
+
+
+def _assert_search_rejects_size_zero() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(cli_group, ["search", "--text", "x", "--size", "0"])
+    if result.exit_code == 0:
+        raise AssertionError("search --size 0 should fail before hitting API")
+
+
+def _assert_search_rejects_inverted_score_range() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(
+        cli_group,
+        ["search", "--text", "x", "--from-score", "9", "--to-score", "5"],
+    )
+    if result.exit_code == 0:
+        raise AssertionError(
+            "search --from-score 9 --to-score 5 should fail before hitting API"
+        )
+
+
 def _assert_advisory_wire_id(advisory: AdvisoryByID, requested_id: str) -> None:
     if advisory.id != requested_id:
         raise AssertionError(
@@ -283,6 +320,27 @@ def run_self_test() -> bool:
         _check(
             "-h works on subcommand and shows description",
             _assert_subcommand_short_help_flag,
+        )
+    )
+
+    results.append(
+        _check(
+            "SARIF rank equals epss without 100x scaling",
+            _assert_sarif_rank_not_scaled,
+        )
+    )
+
+    results.append(
+        _check(
+            "search rejects --size 0 before API call",
+            _assert_search_rejects_size_zero,
+        )
+    )
+
+    results.append(
+        _check(
+            "search rejects inverted --from-score/--to-score",
+            _assert_search_rejects_inverted_score_range,
         )
     )
 

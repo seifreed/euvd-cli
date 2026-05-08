@@ -25,8 +25,6 @@ TOOL_NAME = "EUVD CLI"
 TOOL_VERSION = __version__
 TOOL_URI = "https://euvd.enisa.europa.eu"
 
-EPSS_PERCENT_FACTOR = 100
-
 
 class SARIFConversionError(Exception):
     pass
@@ -110,7 +108,8 @@ def _build_vulnerability_result(
         properties.update(extra_properties)
 
     if vuln.epss is not None:
-        result["rank"] = vuln.epss * EPSS_PERCENT_FACTOR
+        # EUVD API already returns EPSS on a 0-100 scale, matching SARIF rank.
+        result["rank"] = vuln.epss
 
     if fingerprints:
         result["fingerprints"] = fingerprints
