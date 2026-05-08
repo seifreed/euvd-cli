@@ -28,6 +28,10 @@ TOOL_URI = "https://euvd.enisa.europa.eu"
 EPSS_PERCENT_FACTOR = 100
 
 
+class SARIFConversionError(Exception):
+    pass
+
+
 def _cvss_to_sarif_level(base_score: float | None) -> str:
     if base_score is None:
         return "none"
@@ -65,8 +69,8 @@ def _build_vendors(
     return [{"id": v.id, "name": v.vendor.name} for v in vendors]
 
 
-def _strip_none_and_false(fields: dict[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in fields.items() if v is not None and v is not False}
+def _strip_none(fields: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in fields.items() if v is not None}
 
 
 def _build_common_properties(
@@ -74,7 +78,7 @@ def _build_common_properties(
 ) -> dict[str, Any]:
     products = _build_products(vuln.enisa_id_product)
     vendors = _build_vendors(vuln.enisa_id_vendor)
-    return _strip_none_and_false(
+    return _strip_none(
         {
             "baseScore": vuln.base_score,
             "aliases": vuln.aliases,
@@ -153,7 +157,7 @@ def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
         if advisory.enisa_id_advisories
         else None
     )
-    properties = _strip_none_and_false(
+    properties = _strip_none(
         {
             "baseScore": advisory.base_score,
             "aliases": advisory.aliases,
@@ -181,7 +185,7 @@ def kev_entry_to_result(entry: KevEntry) -> dict[str, Any]:
         "fingerprints": {"euvdId/v1": entry.euvd_id},
     }
 
-    properties = _strip_none_and_false(
+    properties = _strip_none(
         {
             "euvdId": entry.euvd_id,
             "dateAdded": entry.date_added,
@@ -256,7 +260,7 @@ def _to_sarif_results(data: Any) -> tuple[list[dict[str, Any]], dict[str, Any] |
             if issubclass(first_type, item_type):
                 return converter(data), None
 
-    raise TypeError(f"Cannot convert {type(data).__name__} to SARIF")
+    raise SARIFConversionError(f"Cannot convert {type(data).__name__} to SARIF")
 
 
 def to_sarif_json(data: Any) -> str:

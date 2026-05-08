@@ -1,8 +1,9 @@
 import time
 import logging
+from types import TracebackType
 import requests
 import requests.exceptions
-from typing import TypeVar, Type
+from typing import Self, TypeVar, Type
 from pydantic import BaseModel, ValidationError
 
 from .models import (
@@ -139,10 +140,15 @@ class EUVDAPIClient:
     def get_kev_dump(self) -> list[KevEntry]:
         return self._get_model_list("/kev/dump", KevEntry)
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     def close(self) -> None:

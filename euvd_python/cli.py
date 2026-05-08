@@ -11,7 +11,10 @@ from . import __version__
 from .console import console
 from .models import SearchFilters, VulnerabilityStats
 from .output import print_data, render_stats, save_data
+from .sarif import SARIFConversionError
 from .self_test import run_self_test
+
+_HANDLED_ERRORS = API_ERRORS + (SARIFConversionError,)
 
 CVSS_MIN = 0.0
 CVSS_MAX = 10.0
@@ -78,7 +81,7 @@ def handle_api_error(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except API_ERRORS as e:
+        except _HANDLED_ERRORS as e:
             _exit_with_error(f"{type(e).__name__}: {e}")
 
     return wrapper

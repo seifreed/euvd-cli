@@ -5,7 +5,7 @@ from typing import Any
 from .api_client import API_ERRORS, EUVDAPIClient
 from .console import console
 from .models import AdvisoryByID, LatestVulnerability, SearchFilters
-from .sarif import to_sarif_json
+from .sarif import SARIFConversionError, to_sarif_json
 
 _TEST_ENISA_ID = "EUVD-2025-4893"
 _TEST_ADVISORY_ID = "oxas-adv-2024-0002"
@@ -51,6 +51,14 @@ def _assert_sarif_rules_unique(items: list[LatestVulnerability]) -> None:
     rule_ids = [r["id"] for r in rules]
     if len(rule_ids) != len(set(rule_ids)):
         raise AssertionError(f"duplicate rule ids: {rule_ids}")
+
+
+def _assert_sarif_unsupported_raises() -> None:
+    try:
+        to_sarif_json({"not": "a model"})
+    except SARIFConversionError:
+        return
+    raise AssertionError("expected SARIFConversionError for unsupported type")
 
 
 EndpointCall = tuple[str, Callable[..., object], tuple[Any, ...]]
@@ -117,6 +125,13 @@ def run_self_test() -> bool:
                 lambda: _assert_sarif_rules_unique(latest),
             )
         )
+
+    results.append(
+        _check(
+            "SARIF unsupported type raises SARIFConversionError",
+            _assert_sarif_unsupported_raises,
+        )
+    )
 
     passed = sum(1 for _, ok in results if ok)
     total = len(results)
