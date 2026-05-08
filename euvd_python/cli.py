@@ -99,14 +99,14 @@ def handle_cli_error(func: Callable[..., Any]) -> Callable[..., Any]:
     help="Output format",
 )
 @click.help_option("-h", "--help")
-def cli(verbose: bool, output_format: str):
+def cli(verbose: bool, output_format: str) -> None:
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
 
 @cli.command()
 @handle_cli_error
-def latest():
+def latest() -> None:
     _fetch_and_output(
         "Fetching latest vulnerabilities...",
         lambda c: c.get_latest_vulnerabilities(),
@@ -116,7 +116,7 @@ def latest():
 
 @cli.command()
 @handle_cli_error
-def critical():
+def critical() -> None:
     _fetch_and_output(
         "Fetching critical vulnerabilities...",
         lambda c: c.get_critical_vulnerabilities(),
@@ -126,7 +126,7 @@ def critical():
 
 @cli.command()
 @handle_cli_error
-def exploited():
+def exploited() -> None:
     _fetch_and_output(
         "Fetching exploited vulnerabilities...",
         lambda c: c.get_exploited_vulnerabilities(),
@@ -137,7 +137,7 @@ def exploited():
 @cli.command(help="Search vulnerability by ENISA ID.")
 @click.argument("enisa_id")
 @handle_cli_error
-def search_enisa(enisa_id: str):
+def search_enisa(enisa_id: str) -> None:
     _fetch_and_output(
         f"Searching for ENISA ID: {enisa_id}...",
         lambda c: c.get_vulnerability_by_enisa_id(enisa_id),
@@ -148,7 +148,7 @@ def search_enisa(enisa_id: str):
 @cli.command(help="Search vulnerability by Advisory ID.")
 @click.argument("advisory_id")
 @handle_cli_error
-def search_advisory(advisory_id: str):
+def search_advisory(advisory_id: str) -> None:
     _fetch_and_output(
         f"Searching for Advisory ID: {advisory_id}...",
         lambda c: c.get_advisory_by_id(advisory_id),
@@ -187,7 +187,7 @@ def search(
     exploited: bool | None,
     size: int,
     page: int,
-):
+) -> None:
     _validate_range(from_score, CVSS_MIN, CVSS_MAX, "from-score")
     _validate_range(to_score, CVSS_MIN, CVSS_MAX, "to-score")
     _validate_range(from_epss, EPSS_MIN, EPSS_MAX, "from-epss")
@@ -220,7 +220,7 @@ def search(
 
 @cli.command(help="Show vulnerability statistics.")
 @handle_cli_error
-def stats():
+def stats() -> None:
     if _output_format() == "sarif":
         _exit_with_error("SARIF format is not supported for statistics")
     print_banner()
@@ -242,7 +242,7 @@ def stats():
 @click.option("--output", "-o", "output_path", help="Save to file path")
 @click.option("--save", is_flag=True, help="Save as kev_dump_YYYYMMDD_HHMMSS.json")
 @handle_cli_error
-def kev_dump(output_path: str | None, save: bool):
+def kev_dump(output_path: str | None, save: bool) -> None:
     fmt = _output_format()
     is_sarif = fmt == "sarif"
     ext = ".sarif.json" if is_sarif else ".json"
@@ -268,7 +268,7 @@ def kev_dump(output_path: str | None, save: bool):
 
 
 @cli.command(help="Run the self-test suite.")
-def selftest():
+def selftest() -> None:
     print_banner()
     if not run_self_test():
         sys.exit(1)
