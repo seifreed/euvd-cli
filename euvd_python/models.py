@@ -86,6 +86,7 @@ class VulnerabilityByID(BaseModel):
     id: str
     assigner: str | None = None
     base_score: float | None = Field(alias="baseScore", default=None)
+    data_processed: str | None = Field(alias="dataProcessed", default=None)
     date_published: str | None = Field(alias="datePublished", default=None)
     date_updated: str | None = Field(alias="dateUpdated", default=None)
     description: str | None = None

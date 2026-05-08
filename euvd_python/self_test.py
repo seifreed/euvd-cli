@@ -87,6 +87,18 @@ def _assert_enisa_vuln_cvss_metadata(vuln: ENISAVulnerabilityByID) -> None:
         raise AssertionError("base_score_vector is None; expected populated from wire")
 
 
+def _assert_nested_vuln_data_processed(vuln: ENISAVulnerabilityByID) -> None:
+    if not vuln.enisa_id_vulnerability:
+        raise AssertionError(
+            "enisa_id_vulnerability empty; cannot validate nested data_processed"
+        )
+    nested = vuln.enisa_id_vulnerability[0].vulnerability
+    if nested.data_processed is None:
+        raise AssertionError(
+            "nested vulnerability.data_processed is None; expected populated from wire"
+        )
+
+
 EndpointCall = tuple[str, Callable[..., object], tuple[Any, ...]]
 
 
@@ -161,6 +173,12 @@ def run_self_test() -> bool:
             _check(
                 "ENISA vulnerability CVSS metadata captured",
                 lambda: _assert_enisa_vuln_cvss_metadata(enisa_vuln),
+            )
+        )
+        results.append(
+            _check(
+                "Nested vulnerability data_processed captured",
+                lambda: _assert_nested_vuln_data_processed(enisa_vuln),
             )
         )
 
