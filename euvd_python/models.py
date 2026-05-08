@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CVSS_CRITICAL_THRESHOLD = 9.0
 CVSS_HIGH_THRESHOLD = 7.0
@@ -173,10 +174,10 @@ class KevEntry(BaseModel):
 
 
 class SearchFilters(BaseModel):
-    from_score: float | None = None
-    to_score: float | None = None
-    from_epss: float | None = None
-    to_epss: float | None = None
+    from_score: float | None = Field(default=None, ge=0.0, le=10.0)
+    to_score: float | None = Field(default=None, ge=0.0, le=10.0)
+    from_epss: float | None = Field(default=None, ge=0.0, le=100.0)
+    to_epss: float | None = Field(default=None, ge=0.0, le=100.0)
     from_date: str | None = None
     to_date: str | None = None
     product: str | None = None
@@ -186,6 +187,17 @@ class SearchFilters(BaseModel):
     text: str | None = None
     page: int = Field(default=0, ge=0)
     size: int = Field(default=10, ge=1)
+
+    @field_validator("from_date", "to_date")
+    @classmethod
+    def _check_iso_date(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("date must be in YYYY-MM-DD format") from exc
+        return value
 
     @model_validator(mode="after")
     def _check_range_pairs(self) -> Self:

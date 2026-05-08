@@ -163,6 +163,48 @@ def _assert_search_rejects_inverted_score_range() -> None:
         )
 
 
+def _assert_search_rejects_out_of_range_score() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(
+        cli_group, ["search", "--text", "x", "--from-score", "15"]
+    )
+    if result.exit_code == 0:
+        raise AssertionError("search --from-score 15 should fail (out of 0-10 range)")
+
+
+def _assert_search_rejects_bad_date_format() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(
+        cli_group, ["search", "--text", "x", "--from-date", "2024/01/01"]
+    )
+    if result.exit_code == 0:
+        raise AssertionError(
+            "search --from-date 2024/01/01 should fail (YYYY-MM-DD required)"
+        )
+
+
+def _assert_validation_error_formatted_compactly() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(cli_group, ["search", "--text", "x", "--size", "0"])
+    if result.exit_code == 0:
+        raise AssertionError("expected non-zero exit on --size 0")
+    if "pydantic.dev" in result.stderr:
+        raise AssertionError(
+            f"raw pydantic URL leaked to user output: {result.stderr!r}"
+        )
+    if "Invalid input" not in result.stderr:
+        raise AssertionError(f"expected 'Invalid input' prefix; got: {result.stderr!r}")
+
+
 def _assert_advisory_wire_id(advisory: AdvisoryByID, requested_id: str) -> None:
     if advisory.id != requested_id:
         raise AssertionError(
@@ -341,6 +383,27 @@ def run_self_test() -> bool:
         _check(
             "search rejects inverted --from-score/--to-score",
             _assert_search_rejects_inverted_score_range,
+        )
+    )
+
+    results.append(
+        _check(
+            "search rejects --from-score out of 0-10 range",
+            _assert_search_rejects_out_of_range_score,
+        )
+    )
+
+    results.append(
+        _check(
+            "search rejects non-ISO --from-date format",
+            _assert_search_rejects_bad_date_format,
+        )
+    )
+
+    results.append(
+        _check(
+            "Validation errors formatted without pydantic.dev URL",
+            _assert_validation_error_formatted_compactly,
         )
     )
 

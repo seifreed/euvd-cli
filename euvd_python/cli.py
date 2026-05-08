@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any, NoReturn
 
 import click
+from pydantic import ValidationError
+
 from .api_client import API_ERRORS, EUVDAPIClient
 from . import __version__
 from .console import err_console
@@ -16,10 +18,13 @@ from .self_test import run_self_test
 
 _HANDLED_ERRORS = API_ERRORS + (SARIFConversionError,)
 
-CVSS_MIN = 0.0
-CVSS_MAX = 10.0
-EPSS_MIN = 0.0
-EPSS_MAX = 100.0
+
+def _format_validation_error(err: ValidationError) -> str:
+    lines = []
+    for item in err.errors():
+        loc = ".".join(str(part) for part in item["loc"]) or "<root>"
+        lines.append(f"  {loc}: {item['msg']}")
+    return "Invalid input:\n" + "\n".join(lines)
 
 
 def print_banner() -> None:
@@ -71,18 +76,13 @@ def _exit_with_error(message: str) -> NoReturn:
     sys.exit(1)
 
 
-def _validate_range(
-    value: float | None, min_val: float, max_val: float, name: str
-) -> None:
-    if value is not None and (value < min_val or value > max_val):
-        _exit_with_error(f"{name} must be between {min_val:.0f} and {max_val:.0f}")
-
-
 def handle_cli_error(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
+        except ValidationError as e:
+            _exit_with_error(_format_validation_error(e))
         except _HANDLED_ERRORS as e:
             _exit_with_error(f"{type(e).__name__}: {e}")
 
@@ -190,11 +190,6 @@ def search(
     size: int,
     page: int,
 ) -> None:
-    _validate_range(from_score, CVSS_MIN, CVSS_MAX, "from-score")
-    _validate_range(to_score, CVSS_MIN, CVSS_MAX, "to-score")
-    _validate_range(from_epss, EPSS_MIN, EPSS_MAX, "from-epss")
-    _validate_range(to_epss, EPSS_MIN, EPSS_MAX, "to-epss")
-
     filters = SearchFilters(
         text=text,
         vendor=vendor,
