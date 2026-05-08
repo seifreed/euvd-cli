@@ -3,7 +3,7 @@ import logging
 from types import TracebackType
 import requests
 import requests.exceptions
-from typing import Self, TypeVar, Type
+from typing import Self, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from .models import (
@@ -99,12 +99,12 @@ class EUVDAPIClient:
         return response.json()
 
     def _get_model(
-        self, endpoint: str, model_class: Type[T], params: dict[str, str] | None = None
+        self, endpoint: str, model_class: type[T], params: dict[str, str] | None = None
     ) -> T:
         data = self._get_json(endpoint, params=params)
         return model_class.model_validate(data)
 
-    def _get_model_list(self, endpoint: str, model_class: Type[T]) -> list[T]:
+    def _get_model_list(self, endpoint: str, model_class: type[T]) -> list[T]:
         data = self._get_json(endpoint)
         if not isinstance(data, list):
             raise APIResponseError(f"Expected list response, got {type(data)}")
@@ -125,11 +125,7 @@ class EUVDAPIClient:
         )
 
     def get_advisory_by_id(self, advisory_id: str) -> AdvisoryByID:
-        advisory = self._get_model(
-            "/advisory", AdvisoryByID, params={"id": advisory_id}
-        )
-        advisory.advisory_id = advisory_id
-        return advisory
+        return self._get_model("/advisory", AdvisoryByID, params={"id": advisory_id})
 
     def search_vulnerabilities(
         self, filters: SearchFilters

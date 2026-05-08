@@ -110,6 +110,8 @@ class ENISAVulnWrapper(BaseModel):
 
 
 class ENISAVulnerabilityByID(VulnerabilityCore):
+    base_score_vector: str | None = Field(alias="baseScoreVector", default=None)
+    base_score_version: str | None = Field(alias="baseScoreVersion", default=None)
     enisa_id_advisory: list[VulnerabilityAdvisory] | None = Field(
         alias="enisaIdAdvisory", default=None
     )
@@ -129,11 +131,15 @@ class ENISAAdvisoryWrapper(BaseModel):
     enisa_id: ENISAVulnerability = Field(alias="enisaId")
 
 
+class AdvisorySource(BaseModel):
+    id: int
+    name: str
+
+
 class AdvisoryByID(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    # Populated client-side from the request; the API response does not echo it back.
-    advisory_id: str | None = None
+    id: str
     advisory_product: list[EnisaProductInfo] | None = Field(
         alias="advisoryProduct", default=None
     )
@@ -144,6 +150,11 @@ class AdvisoryByID(BaseModel):
     description: str | None = None
     enisa_id_advisories: list[ENISAAdvisoryWrapper] | None = Field(
         alias="enisaIdAdvisories", default=None
+    )
+    references: str | None = None
+    source: AdvisorySource | None = None
+    vulnerability_advisory: list[VulnerabilityAdvisory] | None = Field(
+        alias="vulnerabilityAdvisory", default=None
     )
 
 

@@ -4,7 +4,12 @@ from typing import Any
 
 from .api_client import API_ERRORS, EUVDAPIClient
 from .console import console
-from .models import AdvisoryByID, LatestVulnerability, SearchFilters
+from .models import (
+    AdvisoryByID,
+    ENISAVulnerabilityByID,
+    LatestVulnerability,
+    SearchFilters,
+)
 from .sarif import SARIFConversionError, to_sarif_json
 
 _TEST_ENISA_ID = "EUVD-2025-4893"
@@ -61,6 +66,27 @@ def _assert_sarif_unsupported_raises() -> None:
     raise AssertionError("expected SARIFConversionError for unsupported type")
 
 
+def _assert_advisory_wire_id(advisory: AdvisoryByID, requested_id: str) -> None:
+    if advisory.id != requested_id:
+        raise AssertionError(
+            f"advisory.id from wire != requested ({advisory.id!r} vs {requested_id!r})"
+        )
+
+
+def _assert_advisory_source_captured(advisory: AdvisoryByID) -> None:
+    if advisory.source is None:
+        raise AssertionError("advisory.source is None; expected populated from wire")
+    if not advisory.source.name:
+        raise AssertionError("advisory.source.name empty; expected populated from wire")
+
+
+def _assert_enisa_vuln_cvss_metadata(vuln: ENISAVulnerabilityByID) -> None:
+    if vuln.base_score_version is None:
+        raise AssertionError("base_score_version is None; expected populated from wire")
+    if vuln.base_score_vector is None:
+        raise AssertionError("base_score_vector is None; expected populated from wire")
+
+
 EndpointCall = tuple[str, Callable[..., object], tuple[Any, ...]]
 
 
@@ -112,8 +138,29 @@ def run_self_test() -> bool:
     if isinstance(advisory, AdvisoryByID):
         results.append(
             _check(
+                "Advisory id populated from wire",
+                lambda: _assert_advisory_wire_id(advisory, _TEST_ADVISORY_ID),
+            )
+        )
+        results.append(
+            _check(
+                "Advisory source captured from wire",
+                lambda: _assert_advisory_source_captured(advisory),
+            )
+        )
+        results.append(
+            _check(
                 "SARIF advisory ruleId is requested id",
                 lambda: _assert_advisory_sarif_rule_id(advisory, _TEST_ADVISORY_ID),
+            )
+        )
+
+    enisa_vuln = captured.get("ENISA ID search")
+    if isinstance(enisa_vuln, ENISAVulnerabilityByID):
+        results.append(
+            _check(
+                "ENISA vulnerability CVSS metadata captured",
+                lambda: _assert_enisa_vuln_cvss_metadata(enisa_vuln),
             )
         )
 

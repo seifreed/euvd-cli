@@ -135,17 +135,9 @@ def enisa_vulnerability_to_result(vuln: ENISAVulnerabilityByID) -> dict[str, Any
     return _build_vulnerability_result(vuln)
 
 
-def _advisory_rule_id(advisory: AdvisoryByID) -> str:
-    if advisory.advisory_id:
-        return advisory.advisory_id
-    if advisory.enisa_id_advisories:
-        return advisory.enisa_id_advisories[0].id
-    return "unknown-advisory"
-
-
 def advisory_to_result(advisory: AdvisoryByID) -> dict[str, Any]:
     result: dict[str, Any] = {
-        "ruleId": _advisory_rule_id(advisory),
+        "ruleId": advisory.id,
         "level": _cvss_to_sarif_level(advisory.base_score),
         "kind": "review",
         "message": {"text": advisory.description or "Advisory lookup"},

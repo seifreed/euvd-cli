@@ -76,7 +76,7 @@ def _validate_range(
         _exit_with_error(f"{name} must be between {min_val:.0f} and {max_val:.0f}")
 
 
-def handle_api_error(func: Callable[..., Any]) -> Callable[..., Any]:
+def handle_cli_error(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
@@ -103,7 +103,7 @@ def cli(verbose: bool, output_format: str):
 
 
 @cli.command()
-@handle_api_error
+@handle_cli_error
 def latest():
     _fetch_and_output(
         "Fetching latest vulnerabilities...",
@@ -113,7 +113,7 @@ def latest():
 
 
 @cli.command()
-@handle_api_error
+@handle_cli_error
 def critical():
     _fetch_and_output(
         "Fetching critical vulnerabilities...",
@@ -123,7 +123,7 @@ def critical():
 
 
 @cli.command()
-@handle_api_error
+@handle_cli_error
 def exploited():
     _fetch_and_output(
         "Fetching exploited vulnerabilities...",
@@ -134,7 +134,7 @@ def exploited():
 
 @cli.command(help="Search vulnerability by ENISA ID.")
 @click.argument("enisa_id")
-@handle_api_error
+@handle_cli_error
 def search_enisa(enisa_id: str):
     _fetch_and_output(
         f"Searching for ENISA ID: {enisa_id}...",
@@ -145,7 +145,7 @@ def search_enisa(enisa_id: str):
 
 @cli.command(help="Search vulnerability by Advisory ID.")
 @click.argument("advisory_id")
-@handle_api_error
+@handle_cli_error
 def search_advisory(advisory_id: str):
     _fetch_and_output(
         f"Searching for Advisory ID: {advisory_id}...",
@@ -170,7 +170,7 @@ def search_advisory(advisory_id: str):
 )
 @click.option("--size", type=int, default=10, help="Results per page (max 100)")
 @click.option("--page", type=int, default=0, help="Page number")
-@handle_api_error
+@handle_cli_error
 def search(
     text: str | None,
     vendor: str | None,
@@ -217,7 +217,7 @@ def search(
 
 
 @cli.command(help="Show vulnerability statistics.")
-@handle_api_error
+@handle_cli_error
 def stats():
     if _output_format() == "sarif":
         _exit_with_error("SARIF format is not supported for statistics")
@@ -239,7 +239,7 @@ def stats():
 @cli.command(help="Download KEV dump.")
 @click.option("--output", "-o", "output_path", help="Save to file path")
 @click.option("--save", is_flag=True, help="Save as kev_dump_YYYYMMDD_HHMMSS.json")
-@handle_api_error
+@handle_cli_error
 def kev_dump(output_path: str | None, save: bool):
     fmt = _output_format()
     is_sarif = fmt == "sarif"
