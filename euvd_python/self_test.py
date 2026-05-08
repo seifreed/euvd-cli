@@ -268,6 +268,19 @@ def _assert_date_validator_strict_padding() -> None:
         )
 
 
+def _assert_unknown_wire_fields_preserved() -> None:
+    from .models import LatestVulnerability
+
+    vuln = LatestVulnerability.model_validate(
+        {"id": "EUVD-X", "futureField": "future-value", "epss": 1.0}
+    )
+    dump = vuln.model_dump(by_alias=True)
+    if dump.get("futureField") != "future-value":
+        raise AssertionError(
+            f"unknown wire field dropped from model_dump; got {dump!r}"
+        )
+
+
 def _assert_oserror_handled_cleanly() -> None:
     from .cli import handle_cli_error
 
@@ -549,6 +562,13 @@ def run_self_test() -> bool:
         _check(
             "OSError handled cleanly (no traceback)",
             _assert_oserror_handled_cleanly,
+        )
+    )
+
+    results.append(
+        _check(
+            "Unknown wire fields preserved in model_dump",
+            _assert_unknown_wire_fields_preserved,
         )
     )
 

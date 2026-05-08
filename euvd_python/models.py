@@ -10,28 +10,45 @@ CVSS_CRITICAL_THRESHOLD = 9.0
 CVSS_HIGH_THRESHOLD = 7.0
 CVSS_MEDIUM_THRESHOLD = 4.0
 
+# Shared config for every wire-bound response model:
+# - populate_by_name=True so callers can construct by field name as well as
+#   alias (no-op for models without aliases, safe to apply uniformly).
+# - extra="allow" so future API fields not yet declared in the model still
+#   flow through model_dump(by_alias=True) into JSON output instead of being
+#   silently dropped. This is an explicit policy of representing the wire
+#   faithfully even when the schema evolves ahead of our code.
+_WIRE_CONFIG = ConfigDict(populate_by_name=True, extra="allow")
+
 
 class ProductName(BaseModel):
+    model_config = _WIRE_CONFIG
+
     name: str
 
 
 class EnisaProductInfo(BaseModel):
+    model_config = _WIRE_CONFIG
+
     id: str
     product: ProductName
     product_version: str | None = None
 
 
 class VendorName(BaseModel):
+    model_config = _WIRE_CONFIG
+
     name: str
 
 
 class EnisaVendorInfo(BaseModel):
+    model_config = _WIRE_CONFIG
+
     id: str
     vendor: VendorName
 
 
 class VulnerabilityCore(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _WIRE_CONFIG
 
     id: str
     aliases: str | None = None
@@ -74,11 +91,15 @@ class SearchResultVulnerability(VulnerabilityBase):
 
 
 class VulnerabilityQueryResponse(BaseModel):
+    model_config = _WIRE_CONFIG
+
     items: list[SearchResultVulnerability]
     total: int
 
 
 class VulnerabilityAdvisory(BaseModel):
+    model_config = _WIRE_CONFIG
+
     id: str | None = None
     name: str | None = None
     url: str | None = None
@@ -87,7 +108,7 @@ class VulnerabilityAdvisory(BaseModel):
 # Does not inherit from VulnerabilityCore because the API returns different
 # JSON field names (vulnerabilityAdvisory vs enisaIdAdvisory, etc.)
 class VulnerabilityByID(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _WIRE_CONFIG
 
     id: str
     assigner: str | None = None
@@ -112,6 +133,8 @@ class VulnerabilityByID(BaseModel):
 
 
 class ENISAVulnWrapper(BaseModel):
+    model_config = _WIRE_CONFIG
+
     id: str
     vulnerability: VulnerabilityByID
 
@@ -132,19 +155,21 @@ class ENISAVulnerability(VulnerabilityBase):
 
 
 class ENISAAdvisoryWrapper(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _WIRE_CONFIG
 
     id: str
     enisa_id: ENISAVulnerability = Field(alias="enisaId")
 
 
 class AdvisorySource(BaseModel):
+    model_config = _WIRE_CONFIG
+
     id: int
     name: str
 
 
 class AdvisoryByID(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _WIRE_CONFIG
 
     id: str
     advisory_product: list[EnisaProductInfo] | None = Field(
@@ -166,7 +191,7 @@ class AdvisoryByID(BaseModel):
 
 
 class KevEntry(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = _WIRE_CONFIG
 
     cve_id: str = Field(alias="cveId")
     euvd_id: str = Field(alias="euvdId")
