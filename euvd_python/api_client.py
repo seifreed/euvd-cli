@@ -23,7 +23,6 @@ T = TypeVar("T", bound=BaseModel)
 logger = logging.getLogger(__name__)
 
 RATE_LIMIT_INTERVAL = 6.0
-MAX_PAGE_SIZE = 100
 
 _PARAM_ALIASES = {
     "from_score": "fromScore",
@@ -44,7 +43,6 @@ def _build_search_params(filters: SearchFilters) -> dict[str, str]:
             result[api_key] = str(value).lower()
         else:
             result[api_key] = str(value)
-    result["size"] = str(min(filters.size, MAX_PAGE_SIZE))
     return result
 
 

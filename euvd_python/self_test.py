@@ -148,6 +148,18 @@ def _assert_search_rejects_size_zero() -> None:
         raise AssertionError("search --size 0 should fail before hitting API")
 
 
+def _assert_search_rejects_size_above_max() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(cli_group, ["search", "--text", "x", "--size", "150"])
+    if result.exit_code == 0:
+        raise AssertionError(
+            "search --size 150 should fail (max 100) instead of silently capping"
+        )
+
+
 def _assert_search_rejects_inverted_score_range() -> None:
     from click.testing import CliRunner
 
@@ -467,6 +479,13 @@ def run_self_test() -> bool:
         _check(
             "search rejects --size 0 before API call",
             _assert_search_rejects_size_zero,
+        )
+    )
+
+    results.append(
+        _check(
+            "search rejects --size above max (no silent cap)",
+            _assert_search_rejects_size_above_max,
         )
     )
 

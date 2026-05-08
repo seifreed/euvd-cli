@@ -189,7 +189,7 @@ class SearchFilters(BaseModel):
     exploited: bool | None = None
     text: str | None = None
     page: int = Field(default=0, ge=0)
-    size: int = Field(default=10, ge=1)
+    size: int = Field(default=10, ge=1, le=100)
 
     @field_validator("from_date", "to_date")
     @classmethod
