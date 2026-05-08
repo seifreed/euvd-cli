@@ -3,6 +3,7 @@ import logging
 import sys
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any, NoReturn
 
 import click
@@ -20,11 +21,23 @@ _HANDLED_ERRORS = API_ERRORS + (SARIFConversionError,)
 
 
 def _format_validation_error(err: ValidationError) -> str:
+    # Loc paths from SearchFilters always correspond to CLI flags; render them
+    # as --kebab-case so users see the exact flag they typed.
     lines = []
     for item in err.errors():
-        loc = ".".join(str(part) for part in item["loc"]) or "<root>"
+        loc_parts = [str(part) for part in item["loc"]]
+        if loc_parts:
+            loc = "--" + loc_parts[0].replace("_", "-")
+        else:
+            loc = "<root>"
         lines.append(f"  {loc}: {item['msg']}")
     return "Invalid input:\n" + "\n".join(lines)
+
+
+def _save_with_overwrite_warning(data: Any, output_format: str, path: str) -> None:
+    if Path(path).exists():
+        err_console.print(f"[yellow]Warning: overwriting existing file {path}[/yellow]")
+    save_data(data, output_format, path)
 
 
 def print_banner() -> None:
@@ -62,7 +75,7 @@ def _fetch_and_output(
             post_fetch(data)
 
     if save_path:
-        save_data(data, output_format, save_path)
+        _save_with_overwrite_warning(data, output_format, save_path)
         if not is_sarif:
             err_console.print(f"[green]Saved to {save_path}[/green]")
     elif renderer and not is_sarif:

@@ -1,7 +1,10 @@
+import re
 from datetime import datetime
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 CVSS_CRITICAL_THRESHOLD = 9.0
 CVSS_HIGH_THRESHOLD = 7.0
@@ -193,6 +196,8 @@ class SearchFilters(BaseModel):
     def _check_iso_date(cls, value: str | None) -> str | None:
         if value is None:
             return value
+        if not _ISO_DATE_RE.fullmatch(value):
+            raise ValueError("date must be in YYYY-MM-DD format")
         try:
             datetime.strptime(value, "%Y-%m-%d")
         except ValueError as exc:
@@ -213,6 +218,12 @@ class SearchFilters(BaseModel):
             and self.from_epss > self.to_epss
         ):
             raise ValueError("from_epss must be <= to_epss")
+        if (
+            self.from_date is not None
+            and self.to_date is not None
+            and self.from_date > self.to_date
+        ):
+            raise ValueError("from_date must be <= to_date")
         return self
 
 

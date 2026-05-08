@@ -205,6 +205,73 @@ def _assert_validation_error_formatted_compactly() -> None:
         raise AssertionError(f"expected 'Invalid input' prefix; got: {result.stderr!r}")
 
 
+def _assert_validation_error_uses_flag_form() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(
+        cli_group, ["search", "--text", "x", "--from-score", "15"]
+    )
+    if "--from-score" not in result.stderr:
+        raise AssertionError(
+            f"expected --from-score in error message; got: {result.stderr!r}"
+        )
+
+
+def _assert_search_rejects_inverted_date_range() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(
+        cli_group,
+        [
+            "search",
+            "--text",
+            "x",
+            "--from-date",
+            "2025-01-01",
+            "--to-date",
+            "2024-01-01",
+        ],
+    )
+    if result.exit_code == 0:
+        raise AssertionError(
+            "search with from_date > to_date should fail before hitting API"
+        )
+
+
+def _assert_date_validator_strict_padding() -> None:
+    from click.testing import CliRunner
+
+    from .cli import cli as cli_group
+
+    result = CliRunner().invoke(
+        cli_group, ["search", "--text", "x", "--from-date", "2024-1-1"]
+    )
+    if result.exit_code == 0:
+        raise AssertionError(
+            "search --from-date 2024-1-1 should fail (strict YYYY-MM-DD padding)"
+        )
+
+
+def _assert_save_warning_on_overwrite() -> None:
+    import tempfile
+
+    from .cli import _save_with_overwrite_warning
+
+    with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False) as tmp:
+        tmp.write("{}")
+        tmp_path = tmp.name
+
+    err_buf = io.StringIO()
+    with redirect_stderr(err_buf):
+        _save_with_overwrite_warning({"new": "data"}, "json", tmp_path)
+    if "overwriting" not in err_buf.getvalue():
+        raise AssertionError(f"expected overwrite warning; got: {err_buf.getvalue()!r}")
+
+
 def _assert_advisory_wire_id(advisory: AdvisoryByID, requested_id: str) -> None:
     if advisory.id != requested_id:
         raise AssertionError(
@@ -404,6 +471,34 @@ def run_self_test() -> bool:
         _check(
             "Validation errors formatted without pydantic.dev URL",
             _assert_validation_error_formatted_compactly,
+        )
+    )
+
+    results.append(
+        _check(
+            "Validation error uses --kebab-case flag form",
+            _assert_validation_error_uses_flag_form,
+        )
+    )
+
+    results.append(
+        _check(
+            "search rejects inverted --from-date/--to-date",
+            _assert_search_rejects_inverted_date_range,
+        )
+    )
+
+    results.append(
+        _check(
+            "date validator rejects non-padded YYYY-M-D",
+            _assert_date_validator_strict_padding,
+        )
+    )
+
+    results.append(
+        _check(
+            "save warns when overwriting existing file",
+            _assert_save_warning_on_overwrite,
         )
     )
 
