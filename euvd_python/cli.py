@@ -218,21 +218,19 @@ def search(
 def stats():
     if _output_format() == "sarif":
         _exit_with_error("SARIF format is not supported for statistics")
-    fmt = _output_format()
-    if not fmt == "sarif":
-        print_banner()
+    print_banner()
+    console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
     with EUVDAPIClient() as client:
         latest = client.get_latest_vulnerabilities()
         critical = client.get_critical_vulnerabilities()
         exploited = client.get_exploited_vulnerabilities()
-        if not fmt == "sarif":
-            console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
-    stats_data = VulnerabilityStats(
-        latest_count=len(latest),
-        critical_count=len(critical),
-        exploited_count=len(exploited),
+    render_stats(
+        VulnerabilityStats(
+            latest_count=len(latest),
+            critical_count=len(critical),
+            exploited_count=len(exploited),
+        )
     )
-    render_stats(stats_data)
 
 
 @cli.command(help="Download KEV dump.")
