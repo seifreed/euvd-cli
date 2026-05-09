@@ -268,6 +268,35 @@ def _assert_date_validator_strict_padding() -> None:
         )
 
 
+def _assert_sigint_handler_bypasses_click() -> None:
+    import signal
+
+    from .main import _install_signal_handlers, _on_sigint
+
+    # Install the handler in this process so getsignal observes it.
+    _install_signal_handlers()
+    installed = signal.getsignal(signal.SIGINT)
+    if installed is not _on_sigint:
+        raise AssertionError(
+            f"_on_sigint not registered as SIGINT handler; got {installed!r}"
+        )
+
+    # The handler must raise SystemExit(130), not KeyboardInterrupt, so that
+    # Click's `except KeyboardInterrupt` catch does not convert it to
+    # "Aborted!" + exit 1.
+    try:
+        _on_sigint(signal.SIGINT, None)
+    except SystemExit as exc:
+        if exc.code != 130:
+            raise AssertionError(f"expected exit 130, got {exc.code}")
+        return
+    except KeyboardInterrupt as exc:
+        raise AssertionError(
+            "handler raised KeyboardInterrupt; Click would convert to exit 1"
+        ) from exc
+    raise AssertionError("handler did not raise SystemExit")
+
+
 def _assert_keyboard_interrupt_exits_130() -> None:
     from . import main as main_module
 
@@ -634,6 +663,13 @@ def run_self_test() -> bool:
         _check(
             "KeyboardInterrupt exits 130 silently",
             _assert_keyboard_interrupt_exits_130,
+        )
+    )
+
+    results.append(
+        _check(
+            "SIGINT handler bypasses Click and raises SystemExit(130)",
+            _assert_sigint_handler_bypasses_click,
         )
     )
 
