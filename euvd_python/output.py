@@ -1,3 +1,5 @@
+import csv as _csv
+import io
 import json
 import sys
 from pathlib import Path
@@ -19,9 +21,73 @@ def to_serializable(data: Any) -> Any:
     return data
 
 
+def _items_for_flat_format(data: Any) -> Any:
+    serial = to_serializable(data)
+    if (
+        isinstance(serial, dict)
+        and "items" in serial
+        and "total" in serial
+        and isinstance(serial["items"], list)
+    ):
+        return serial["items"]
+    return serial
+
+
+def _to_jsonl(data: Any) -> str:
+    serial = _items_for_flat_format(data)
+    if isinstance(serial, list):
+        return "\n".join(json.dumps(item, ensure_ascii=False) for item in serial)
+    return json.dumps(serial, ensure_ascii=False)
+
+
+def _to_csv(data: Any) -> str:
+    serial = _items_for_flat_format(data)
+    rows = serial if isinstance(serial, list) else [serial]
+    keys: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        for k in row:
+            if k not in seen:
+                seen.add(k)
+                keys.append(k)
+    if not keys:
+        return ""
+    out = io.StringIO()
+    writer = _csv.DictWriter(out, fieldnames=keys, lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        flat: dict[str, Any] = {}
+        for k in keys:
+            v = row.get(k)
+            if v is None:
+                flat[k] = ""
+            elif isinstance(v, (dict, list)):
+                flat[k] = json.dumps(v, separators=(",", ":"), ensure_ascii=False)
+            else:
+                flat[k] = v
+        writer.writerow(flat)
+    return out.getvalue().rstrip("\n")
+
+
+def _to_toon(data: Any) -> str:
+    from toon_format import encode
+
+    return encode(to_serializable(data)).rstrip("\n")
+
+
 def format_data(data: Any, output_format: str) -> str:
     if output_format == "sarif":
         return to_sarif_json(data)
+    if output_format == "jsonl":
+        return _to_jsonl(data)
+    if output_format == "csv":
+        return _to_csv(data)
+    if output_format == "toon":
+        return _to_toon(data)
     return json.dumps(to_serializable(data), indent=2)
 
 

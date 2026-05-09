@@ -98,6 +98,64 @@ def _assert_error_to_stderr() -> None:
         )
 
 
+def _assert_jsonl_one_line_per_item() -> None:
+    from .models import LatestVulnerability
+    from .output import format_data
+
+    items = [
+        LatestVulnerability(id="EUVD-A", epss=1.0),
+        LatestVulnerability(id="EUVD-B", epss=2.0),
+    ]
+    out = format_data(items, "jsonl")
+    lines = out.splitlines()
+    if len(lines) != 2:
+        raise AssertionError(f"expected 2 lines, got {len(lines)}: {out!r}")
+    parsed = [json.loads(line) for line in lines]
+    if [p["id"] for p in parsed] != ["EUVD-A", "EUVD-B"]:
+        raise AssertionError(f"jsonl ids mismatch: {parsed!r}")
+
+
+def _assert_csv_header_and_rows() -> None:
+    import csv as _csv
+    import io
+
+    from .models import LatestVulnerability
+    from .output import format_data
+
+    items = [
+        LatestVulnerability(id="EUVD-A", epss=1.0),
+        LatestVulnerability(id="EUVD-B", epss=2.0),
+    ]
+    out = format_data(items, "csv")
+    reader = _csv.DictReader(io.StringIO(out))
+    rows = list(reader)
+    if len(rows) != 2:
+        raise AssertionError(f"expected 2 csv rows, got {len(rows)}: {out!r}")
+    if rows[0].get("id") != "EUVD-A" or rows[1].get("id") != "EUVD-B":
+        raise AssertionError(f"csv ids mismatch: {rows!r}")
+
+
+def _assert_toon_round_trip() -> None:
+    from toon_format import decode
+
+    from .models import LatestVulnerability
+    from .output import format_data
+
+    items = [
+        LatestVulnerability(id="EUVD-A", epss=1.0),
+        LatestVulnerability(id="EUVD-B", epss=2.0),
+    ]
+    out = format_data(items, "toon")
+    if "EUVD-A" not in out or "EUVD-B" not in out:
+        raise AssertionError(f"toon output missing ids: {out!r}")
+    decoded = decode(out)
+    decoded_ids = (
+        [item.get("id") for item in decoded] if isinstance(decoded, list) else []
+    )
+    if decoded_ids != ["EUVD-A", "EUVD-B"]:
+        raise AssertionError(f"toon round-trip ids mismatch: {decoded!r}")
+
+
 def _assert_print_data_clean_stdout() -> None:
     from .output import print_data
 
@@ -277,7 +335,6 @@ def _assert_public_api_importable() -> None:
     missing = [name for name in public_names if not hasattr(euvd_python, name)]
     if missing:
         raise AssertionError(f"public symbols missing from euvd_python: {missing}")
-    # Sanity check key library entry points resolve to the right objects.
     from .api_client import EUVDAPIClient as _expected_client
     from .models import SearchFilters as _expected_filters
 
@@ -313,7 +370,6 @@ def _assert_sigint_handler_bypasses_click() -> None:
 
     from .main import _install_signal_handlers, _on_sigint
 
-    # Install the handler in this process so getsignal observes it.
     _install_signal_handlers()
     installed = signal.getsignal(signal.SIGINT)
     if installed is not _on_sigint:
@@ -321,9 +377,6 @@ def _assert_sigint_handler_bypasses_click() -> None:
             f"_on_sigint not registered as SIGINT handler; got {installed!r}"
         )
 
-    # The handler must raise SystemExit(130), not KeyboardInterrupt, so that
-    # Click's `except KeyboardInterrupt` catch does not convert it to
-    # "Aborted!" + exit 1.
     try:
         _on_sigint(signal.SIGINT, None)
     except SystemExit as exc:
@@ -591,6 +644,27 @@ def run_self_test() -> bool:
         _check(
             "JSON stdout is clean (no ANSI escapes)",
             _assert_print_data_clean_stdout,
+        )
+    )
+
+    results.append(
+        _check(
+            "JSONL emits one JSON object per item",
+            _assert_jsonl_one_line_per_item,
+        )
+    )
+
+    results.append(
+        _check(
+            "CSV emits header plus one row per item",
+            _assert_csv_header_and_rows,
+        )
+    )
+
+    results.append(
+        _check(
+            "TOON encode round-trips back to the same items",
+            _assert_toon_round_trip,
         )
     )
 

@@ -17,18 +17,11 @@ from .output import print_data, render_stats, save_data
 from .sarif import SARIFConversionError
 from .self_test import run_self_test
 
-# OSError covers filesystem failures during save (FileNotFoundError,
-# PermissionError, IsADirectoryError, disk full) and BrokenPipeError when
-# stdout's reader closes. Network OSErrors are wrapped by requests into
-# RequestException so they go through API_ERRORS, not this catch.
+# OSError catches save-path and broken-pipe failures.
 _HANDLED_ERRORS = API_ERRORS + (SARIFConversionError, OSError)
 
 
 def _format_validation_error(err: ValidationError) -> str:
-    # Single-element loc paths from SearchFilters correspond directly to CLI
-    # flags, so render them as --kebab-case. Multi-element loc paths (nested
-    # field validation) are not flags; render them as a dotted path so the
-    # message still pinpoints the offending field.
     lines = []
     for item in err.errors():
         loc_parts = [str(part) for part in item["loc"]]
@@ -43,9 +36,7 @@ def _format_validation_error(err: ValidationError) -> str:
 
 
 def _save_with_overwrite_warning(data: Any, output_format: str, path: str) -> None:
-    # is_file() only matches regular files; directories or missing paths do
-    # not warrant an overwrite warning (save_data will surface its own OSError
-    # if the path is unwritable).
+    # is_file() avoids a misleading warning when the path is a directory.
     if Path(path).is_file():
         err_console.print(f"[yellow]Warning: overwriting existing file {path}[/yellow]")
     save_data(data, output_format, path)
@@ -121,7 +112,7 @@ def handle_cli_error(func: Callable[..., Any]) -> Callable[..., Any]:
 @click.option(
     "--format",
     "output_format",
-    type=click.Choice(["json", "sarif"]),
+    type=click.Choice(["json", "jsonl", "csv", "toon", "sarif"]),
     default="json",
     help="Output format",
 )
@@ -242,8 +233,11 @@ def search(
 @cli.command(help="Show vulnerability statistics.")
 @handle_cli_error
 def stats() -> None:
-    if _output_format() == "sarif":
-        _exit_with_error("SARIF format is not supported for statistics")
+    fmt = _output_format()
+    if fmt != "json":
+        _exit_with_error(
+            f"{fmt} format is not supported for statistics; stats renders a table only"
+        )
     print_banner()
     err_console.print("[yellow]Fetching vulnerability statistics...[/yellow]")
     with EUVDAPIClient() as client:
@@ -259,14 +253,22 @@ def stats() -> None:
     )
 
 
+_KEV_EXT_BY_FORMAT = {
+    "json": ".json",
+    "jsonl": ".jsonl",
+    "csv": ".csv",
+    "toon": ".toon",
+    "sarif": ".sarif.json",
+}
+
+
 @cli.command(help="Download KEV dump.")
 @click.option("--output", "-o", "output_path", help="Save to file path")
 @click.option("--save", is_flag=True, help="Save as kev_dump_YYYYMMDD_HHMMSS.json")
 @handle_cli_error
 def kev_dump(output_path: str | None, save: bool) -> None:
     fmt = _output_format()
-    is_sarif = fmt == "sarif"
-    ext = ".sarif.json" if is_sarif else ".json"
+    ext = _KEV_EXT_BY_FORMAT.get(fmt, ".json")
     save_path: str | None = None
     if output_path or save:
         save_path = (
