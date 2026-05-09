@@ -268,6 +268,25 @@ def _assert_date_validator_strict_padding() -> None:
         )
 
 
+def _assert_public_api_importable() -> None:
+    import euvd_python
+
+    public_names = euvd_python.__all__
+    if not public_names:
+        raise AssertionError("euvd_python.__all__ is empty")
+    missing = [name for name in public_names if not hasattr(euvd_python, name)]
+    if missing:
+        raise AssertionError(f"public symbols missing from euvd_python: {missing}")
+    # Sanity check key library entry points resolve to the right objects.
+    from .api_client import EUVDAPIClient as _expected_client
+    from .models import SearchFilters as _expected_filters
+
+    if euvd_python.EUVDAPIClient is not _expected_client:
+        raise AssertionError("euvd_python.EUVDAPIClient re-export drifted")
+    if euvd_python.SearchFilters is not _expected_filters:
+        raise AssertionError("euvd_python.SearchFilters re-export drifted")
+
+
 def _assert_version_from_package_metadata() -> None:
     from importlib.metadata import PackageNotFoundError, version
 
@@ -698,6 +717,13 @@ def run_self_test() -> bool:
         _check(
             "__version__ resolved from installed package metadata",
             _assert_version_from_package_metadata,
+        )
+    )
+
+    results.append(
+        _check(
+            "Public library API importable from top-level package",
+            _assert_public_api_importable,
         )
     )
 

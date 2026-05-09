@@ -41,6 +41,23 @@ python euvd-cli.py --format sarif search-advisory oxas-adv-2024-0002
 
 Note: vendor, product, CVSS score filters may return 403 from the API.
 
+## As a library
+
+```python
+from euvd_python import EUVDAPIClient, SearchFilters, to_sarif_json
+
+with EUVDAPIClient() as client:
+    latest = client.get_latest_vulnerabilities()
+    advisory = client.get_advisory_by_id("oxas-adv-2024-0002")
+    results = client.search_vulnerabilities(
+        SearchFilters(text="OpenSSL", from_score=7.0, size=20)
+    )
+
+sarif_json = to_sarif_json(latest)
+```
+
+The same rate limiter (1 request / 6s) and validation rules (`SearchFilters` enforces score 0-10, EPSS 0-100, ISO dates, `from_X <= to_X`) apply when used as a library.
+
 ## API
 
 Base URL: `https://euvdservices.enisa.europa.eu/api`
