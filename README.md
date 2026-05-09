@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/euvd-python-cli/"><img src="https://img.shields.io/pypi/v/euvd-python-cli?style=flat-square&logo=pypi&logoColor=white" alt="PyPI Version"></a>
-  <a href="https://pypi.org/project/euvd-python-cli/"><img src="https://img.shields.io/pypi/pyversions/euvd-python-cli?style=flat-square&logo=python&logoColor=white" alt="Python Versions"></a>
-  <a href="https://github.com/seifreed/euvd-cli/blob/main/LICENSE"><img src="https://img.shields.io/github/license/seifreed/euvd-cli?style=flat-square" alt="License"></a>
-  <a href="https://github.com/seifreed/euvd-cli/actions"><img src="https://img.shields.io/github/actions/workflow/status/seifreed/euvd-cli/ci.yml?style=flat-square&logo=github&label=CI" alt="CI Status"></a>
-  <a href="https://pypi.org/project/euvd-python-cli/"><img src="https://img.shields.io/pypi/dm/euvd-python-cli?style=flat-square&logo=pypi&logoColor=white" alt="Downloads"></a>
+  <a href="https://pypi.org/project/euvd-python-cli/"><img src="https://img.shields.io/pypi/v/euvd-python-cli?style=flat-square&logo=pypi&logoColor=white&cacheSeconds=3600" alt="PyPI Version"></a>
+  <a href="https://pypi.org/project/euvd-python-cli/"><img src="https://img.shields.io/pypi/pyversions/euvd-python-cli?style=flat-square&logo=python&logoColor=white&cacheSeconds=3600" alt="Python Versions"></a>
+  <a href="https://github.com/seifreed/euvd-cli/blob/main/LICENSE"><img src="https://img.shields.io/github/license/seifreed/euvd-cli?style=flat-square&cacheSeconds=3600" alt="License"></a>
+  <a href="https://github.com/seifreed/euvd-cli/actions"><img src="https://img.shields.io/github/actions/workflow/status/seifreed/euvd-cli/ci.yml?style=flat-square&logo=github&label=CI&cacheSeconds=3600" alt="CI Status"></a>
+  <a href="https://pypi.org/project/euvd-python-cli/"><img src="https://img.shields.io/pypi/dm/euvd-python-cli?style=flat-square&logo=pypi&logoColor=white&cacheSeconds=3600" alt="Downloads"></a>
 </p>
 
 ## Overview
