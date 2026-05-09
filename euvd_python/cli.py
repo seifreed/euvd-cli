@@ -13,12 +13,12 @@ from .api_client import API_ERRORS, EUVDAPIClient
 from . import __version__
 from .console import err_console
 from .models import SearchFilters, VulnerabilityStats
-from .output import print_data, render_stats, save_data
+from .output import OutputDependencyError, print_data, render_stats, save_data
 from .sarif import SARIFConversionError
 from .self_test import run_self_test
 
 # OSError catches save-path and broken-pipe failures.
-_HANDLED_ERRORS = API_ERRORS + (SARIFConversionError, OSError)
+_HANDLED_ERRORS = API_ERRORS + (SARIFConversionError, OSError, OutputDependencyError)
 
 
 def _format_validation_error(err: ValidationError) -> str:

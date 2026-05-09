@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 # Single source of truth; runtime reads back via importlib.metadata.
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -34,12 +34,15 @@ setup(
     python_requires=">=3.13",
     install_requires=requirements,
     extras_require={
+        "toon": ["toon-format==0.9.0b1"],
+        "all": ["toon-format==0.9.0b1"],
         "dev": [
             "bandit==1.9.4",
             "black==26.3.1",
             "mypy==1.20.2",
             "pip-audit",
             "ruff==0.15.12",
+            "toon-format==0.9.0b1",
             "types-requests==2.33.0.20260503",
         ],
     },

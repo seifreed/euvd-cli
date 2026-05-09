@@ -112,7 +112,7 @@ euvd-cli search --from-epss 50 --to-epss 100
 
 ### Output formats
 
-The `--format` flag is on the group, before the subcommand. Supported: `json` (default, indented), `jsonl` (one JSON object per line), `csv`, `toon` ([Token-Oriented Object Notation](https://github.com/toon-format/toon)), `sarif` (SARIF 2.1).
+The `--format` flag is on the group, before the subcommand. Supported: `json` (default, indented), `jsonl` (one JSON object per line), `csv`, `toon` ([Token-Oriented Object Notation](https://github.com/toon-format/toon), requires `pip install "euvd-python-cli[toon]" --pre`), `sarif` (SARIF 2.1).
 
 ```bash
 euvd-cli --format json  latest

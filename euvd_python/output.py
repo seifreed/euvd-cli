@@ -73,9 +73,18 @@ def _to_csv(data: Any) -> str:
     return out.getvalue().rstrip("\n")
 
 
-def _to_toon(data: Any) -> str:
-    from toon_format import encode
+class OutputDependencyError(Exception):
+    pass
 
+
+def _to_toon(data: Any) -> str:
+    try:
+        from toon_format import encode
+    except ImportError as exc:
+        raise OutputDependencyError(
+            'TOON output requires the optional "toon" extra: '
+            'pip install "euvd-python-cli[toon]" --pre'
+        ) from exc
     return encode(to_serializable(data)).rstrip("\n")
 
 
