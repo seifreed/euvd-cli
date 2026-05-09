@@ -1,5 +1,9 @@
-import re
 from setuptools import setup, find_packages
+
+# Version is declared here as the single source of truth. The runtime
+# (euvd_python/__init__.py) reads it back from importlib.metadata after
+# install, so the banner reflects the actually installed distribution.
+VERSION = "1.0.0"
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -7,13 +11,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
 with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
-with open("euvd_python/__init__.py", "r") as fh:
-    version_match = re.search(r'^__version__\s*=\s*["\']([^"\']+)', fh.read(), re.MULTILINE)
-    version = version_match.group(1) if version_match else "0.0.0"
-
 setup(
     name="euvd-python-cli",
-    version=version,
+    version=VERSION,
     author="Marc Rivero Lopez",
     author_email="mriverolopez@gmail.com",
     description="A Python CLI tool for querying the ENISA EU Vulnerability Database (EUVD) API",

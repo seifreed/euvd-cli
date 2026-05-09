@@ -268,6 +268,27 @@ def _assert_date_validator_strict_padding() -> None:
         )
 
 
+def _assert_version_from_package_metadata() -> None:
+    from importlib.metadata import PackageNotFoundError, version
+
+    from . import __version__
+
+    try:
+        from_metadata = version("euvd-python-cli")
+    except PackageNotFoundError as exc:
+        raise AssertionError(
+            "package 'euvd-python-cli' not installed; expected editable install"
+        ) from exc
+
+    if not __version__:
+        raise AssertionError("__version__ is empty")
+    if __version__ != from_metadata:
+        raise AssertionError(
+            f"runtime __version__={__version__!r} drifted from "
+            f"installed metadata={from_metadata!r}"
+        )
+
+
 def _assert_sigint_handler_bypasses_click() -> None:
     import signal
 
@@ -670,6 +691,13 @@ def run_self_test() -> bool:
         _check(
             "SIGINT handler bypasses Click and raises SystemExit(130)",
             _assert_sigint_handler_bypasses_click,
+        )
+    )
+
+    results.append(
+        _check(
+            "__version__ resolved from installed package metadata",
+            _assert_version_from_package_metadata,
         )
     )
 
