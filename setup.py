@@ -1,8 +1,6 @@
 from setuptools import setup, find_packages
 
-# Version is declared here as the single source of truth. The runtime
-# (euvd_python/__init__.py) reads it back from importlib.metadata after
-# install, so the banner reflects the actually installed distribution.
+# Single source of truth; runtime reads back via importlib.metadata.
 VERSION = "1.0.0"
 
 with open("README.md", "r", encoding="utf-8") as fh:
