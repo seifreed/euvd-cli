@@ -64,14 +64,13 @@ git clone https://github.com/seifreed/euvd-cli.git
 cd euvd-cli
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
 pip install -e .
 ```
 
 ### Development
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 ```
 
 ## Quick start

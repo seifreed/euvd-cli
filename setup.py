@@ -33,6 +33,16 @@ setup(
     ],
     python_requires=">=3.13",
     install_requires=requirements,
+    extras_require={
+        "dev": [
+            "bandit==1.9.4",
+            "black==26.3.1",
+            "mypy==1.20.2",
+            "pip-audit",
+            "ruff==0.15.12",
+            "types-requests==2.33.0.20260503",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "euvd-cli=euvd_python.main:main",
