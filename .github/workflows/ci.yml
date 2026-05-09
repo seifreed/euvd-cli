@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    name: gates (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest        # Linux x64
+          - ubuntu-24.04-arm     # Linux ARM
+          - macos-13             # macOS x64 (Intel)
+          - macos-14             # macOS ARM (Apple Silicon)
+          - windows-latest       # Windows x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: install
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+
+      - run: black --check euvd_python/
+        shell: bash
+
+      - run: ruff check euvd_python/
+        shell: bash
+
+      - run: mypy euvd_python/
+        shell: bash
+
+      - run: bandit -r euvd_python/ -q
+        shell: bash
+
+      - name: library import smoke (no API)
+        shell: bash
+        run: |
+          python -c "
+          from euvd_python import EUVDAPIClient, SearchFilters, to_sarif_json
+          import euvd_python
+          assert len(euvd_python.__all__) == 32
+          "
+
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pip-audit
+      - run: pip-audit -r requirements.txt
+
+  api-selftest:
+    name: selftest (live API, ubuntu-latest only)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - run: python euvd-cli.py selftest
