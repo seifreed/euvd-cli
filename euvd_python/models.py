@@ -10,13 +10,7 @@ CVSS_CRITICAL_THRESHOLD = 9.0
 CVSS_HIGH_THRESHOLD = 7.0
 CVSS_MEDIUM_THRESHOLD = 4.0
 
-# Shared config for every wire-bound response model:
-# - populate_by_name=True so callers can construct by field name as well as
-#   alias (no-op for models without aliases, safe to apply uniformly).
-# - extra="allow" so future API fields not yet declared in the model still
-#   flow through model_dump(by_alias=True) into JSON output instead of being
-#   silently dropped. This is an explicit policy of representing the wire
-#   faithfully even when the schema evolves ahead of our code.
+# extra="allow" preserves wire fields not declared in the model.
 _WIRE_CONFIG = ConfigDict(populate_by_name=True, extra="allow")
 
 
@@ -105,8 +99,7 @@ class VulnerabilityAdvisory(BaseModel):
     url: str | None = None
 
 
-# Does not inherit from VulnerabilityCore because the API returns different
-# JSON field names (vulnerabilityAdvisory vs enisaIdAdvisory, etc.)
+# Distinct from VulnerabilityCore: this endpoint uses different field names.
 class VulnerabilityByID(BaseModel):
     model_config = _WIRE_CONFIG
 

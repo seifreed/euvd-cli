@@ -72,8 +72,7 @@ class RateLimiter:
 
 class EUVDAPIClient:
     DEFAULT_BASE_URL = "https://euvdservices.enisa.europa.eu/api"
-    # Text search on /search consistently takes ~6-7s server-side; other
-    # endpoints respond in <1s. 30s gives ~4x headroom for text search.
+    # /search?text= takes 6-7s server-side; 30s gives 4x headroom.
     DEFAULT_TIMEOUT = 30.0
 
     def __init__(
